@@ -1,0 +1,177 @@
+.flip-clock {
+  --unit-w: clamp(116px, 28vw, 260px);
+  --unit-h: clamp(134px, 30vw, 268px);
+  --unit-font: clamp(104px, 27vw, 232px);
+  --card-radius: clamp(15px, 2.7vw, 25px);
+  --card-gap: clamp(10px, 2.5vw, 22px);
+  --unit-weight: 500;
+  /* Desloca o digito para alinhar o centro optico ao corte.
+     Positivo = desce o numero; negativo = sobe. */
+  --digit-shift: -0.03em;
+
+  display: flex;
+  gap: var(--card-gap);
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.flip-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 16px);
+}
+.flip-cell__label {
+  font-size: clamp(11px, 1.3vw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.flip-unit {
+  position: relative;
+  width: var(--unit-w);
+  height: var(--unit-h);
+  font-family: "Oswald", system-ui, sans-serif;
+  font-size: var(--unit-font);
+  font-weight: var(--unit-weight);
+  line-height: 1;
+  color: var(--clock-text);
+  perspective: 800px;
+  /* Placa flutuante: sombra projetada que descola o cartao da superficie.
+     Token --plate-shadow muda por tema (mais forte no dark, suave no claro). */
+  border-radius: var(--card-radius);
+  box-shadow: var(--plate-shadow);
+}
+
+/* Badge tipo "AM"/"PM" no canto superior esquerdo (estilo despertador). */
+.flip-unit__badge {
+  position: absolute;
+  top: clamp(8px, 1.5vw, 15px);
+  left: clamp(9px, 1.4vw, 16px);
+  z-index: 5;
+  font-family: "Oswald", system-ui, sans-serif;
+  font-size: clamp(11px, 1.4vw, 17px);
+  font-weight: var(--unit-weight);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--clock-text);
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+/* Botao de expandir (tela cheia) no canto sup. direito do ultimo claquete.
+   Espelho do badge "AM"; vive numa camada acima das abas, entao nao gira junto. */
+.flip-unit__action {
+  position: absolute;
+  bottom: calc(100% + clamp(6px, 1vw, 12px));
+  right: clamp(2px, 0.6vw, 8px);
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--clock-text);
+  opacity: 0.42;
+  cursor: pointer;
+  line-height: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.flip-unit__action svg {
+  width: clamp(16px, 2.1vw, 26px);
+  height: auto;
+}
+.flip-unit__action:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.flip-unit__action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  opacity: 0.9;
+}
+
+/* Linha de corte no meio do cartao (estilo placa). */
+.flip-unit::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: clamp(4px, 0.9vw, 7px);
+  transform: translateY(-50%);
+  background: var(--bg);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.flip-unit .card {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* O digito inteiro vive dentro de cada metade, mas posicionado para que
+   so a parte certa apareca (o restante e cortado por overflow:hidden). */
+.flip-unit .card span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--unit-h);
+  line-height: var(--unit-h);
+  text-align: center;
+  transform: translateY(var(--digit-shift));
+}
+
+/* Metades de cima: ancoram o digito no topo -> mostra a parte de cima. */
+.card--static-top,
+.card--flip-top {
+  top: 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  background: var(--card-grad-top);
+  box-shadow: var(--card-top-shadow);
+}
+.card--static-top span,
+.card--flip-top span {
+  top: 0;
+}
+
+/* Metades de baixo: deslocam o digito para cima -> mostra a parte de baixo.
+   (-100% da altura do cartao = metade da altura total da unidade) */
+.card--static-bottom,
+.card--flip-bottom {
+  top: 50%;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  background: var(--card-grad-bottom);
+  box-shadow: var(--card-bottom-shadow);
+}
+.card--static-bottom span,
+.card--flip-bottom span {
+  top: -100%;
+}
+
+/* Abas animadas. */
+.card--static-top {
+  z-index: 1;
+}
+.card--static-bottom {
+  z-index: 1;
+}
+.card--flip-top {
+  z-index: 3;
+  transform-origin: center bottom;
+  transform: rotateX(0deg);
+  will-change: transform;
+}
+.card--flip-bottom {
+  z-index: 2;
+  transform-origin: center top;
+  transform: rotateX(90deg);
+  will-change: transform;
+}
