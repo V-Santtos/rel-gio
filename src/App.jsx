@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import gsap from "gsap";
 import { Flip } from "gsap/Flip";
 
@@ -38,6 +39,7 @@ import AuthPanel from "./components/AuthPanel.jsx";
 import { useTimer } from "./hooks/useTimer.js";
 import { useStopwatch } from "./hooks/useStopwatch.js";
 import { playPhaseEnd, playTick, primeAudio, playAlarm } from "./lib/sound.js";
+import { syncPushSubscription } from "./lib/pushSubscription.js";
 import {
   loadAllAlarms,
   nowHHMM,
@@ -342,7 +344,7 @@ function FocoSection({
         />
       </div>
 
-      <div className="focus-actions" ref={actionsRef}>
+      <div id="notif-guide-anchor" className="focus-actions" ref={actionsRef}>
         <div className="controls">
           {running ? (
             <button type="button" className="btn btn--cta" onClick={pause}>
@@ -495,8 +497,18 @@ const isWeekDayKey = (key) => WEEK_DAY_KEYS.includes(key);
 const bySort = (a, b) =>
   (a.sortOrder ?? a.sort_order ?? 0) - (b.sortOrder ?? b.sort_order ?? 0);
 
-const fallbackLanes = () =>
-  DIAS_SEMANA.map((title, index) => ({
+const fallbackLanes = () => [
+  {
+    id: "default-init",
+    dayKey: "default-init",
+    title: "Lista 1",
+    mode: "default",
+    collapsed: false,
+    sortOrder: -1,
+    cards: [],
+    alarms: [],
+  },
+  ...DIAS_SEMANA.map((title, index) => ({
     id: String(index),
     dayKey: WEEK_DAY_KEYS[index],
     title,
@@ -505,7 +517,8 @@ const fallbackLanes = () =>
     sortOrder: index,
     cards: [],
     alarms: [],
-  }));
+  })),
+];
 
 const cleanChecklist = (list, index = 0) => ({
   id: list.id,
@@ -527,6 +540,20 @@ function TarefasSection({ userId }) {
   const [boardMode, setBoardMode] = useState("default");
   const [boardReady, setBoardReady] = useState(!supabase || !userId);
   const [syncError, setSyncError] = useState("");
+  const [weekGuideVisible, setWeekGuideVisible] = useState(false);
+
+  useEffect(() => {
+    if (boardMode !== "week" || !boardReady) return;
+    if (localStorage.getItem("fluxtime.week-guide-dismissed")) return;
+    const t = setTimeout(() => setWeekGuideVisible(true), 500);
+    return () => clearTimeout(t);
+  }, [boardMode, boardReady]);
+
+  const dismissWeekGuide = () => {
+    localStorage.setItem("fluxtime.week-guide-dismissed", "1");
+    setWeekGuideVisible(false);
+  };
+
   const dragFrom = useRef(null);
   const lastOver = useRef(null);
   const flipState = useRef(null);
@@ -704,10 +731,38 @@ function TarefasSection({ userId }) {
         alarms: alarmsByLane.get(lane.id) || [],
       }));
 
+      const hasCustomLane = nextLanes.some((l) => !isWeekDayKey(l.dayKey));
+      let finalLanes = nextLanes.length ? nextLanes : fallbackLanes();
+      if (nextLanes.length && !hasCustomLane) {
+        const id = makeClientId();
+        const initLane = {
+          id,
+          dayKey: `default-${id}`,
+          title: "Lista 1",
+          mode: "default",
+          collapsed: false,
+          sortOrder: -1,
+          cards: [],
+          alarms: [],
+        };
+        supabase.from("task_lanes").insert({
+          id: initLane.id,
+          user_id: userId,
+          day_key: initLane.dayKey,
+          title: initLane.title,
+          mode: initLane.mode,
+          collapsed: false,
+          sort_order: initLane.sortOrder,
+        }).then(({ error }) => {
+          if (error) console.warn("[board] erro ao criar lista padrão:", error);
+        });
+        finalLanes = [initLane, ...nextLanes];
+      }
+
       setLabels(nextLabels);
       setRuntimeLabels(nextLabels);
-      setLanes(nextLanes.length ? nextLanes : fallbackLanes());
-      setBoardMode(nextLanes.some((lane) => lane.mode === "week") ? "week" : "default");
+      setLanes(finalLanes);
+      setBoardMode("default");
       setBoardReady(true);
     }
 
@@ -1088,10 +1143,7 @@ function TarefasSection({ userId }) {
 
   const orderedLanes = [...lanes].sort(bySort);
   const weekLanes = orderedLanes.filter((lane) => isWeekDayKey(lane.dayKey)).slice(0, 7);
-  const defaultLanes = [
-    weekLanes[0] || orderedLanes[0],
-    ...orderedLanes.filter((lane) => !isWeekDayKey(lane.dayKey)),
-  ].filter(Boolean);
+  const defaultLanes = orderedLanes.filter((lane) => !isWeekDayKey(lane.dayKey));
   const visibleLanes = boardMode === "default" ? defaultLanes : weekLanes;
   const canCreateDefaultLane =
     boardMode === "default" && defaultLanes.length < DEFAULT_LANE_LIMIT;
@@ -1289,7 +1341,108 @@ function TarefasSection({ userId }) {
         </button>
       ) : null}
       </div>
+      {weekGuideVisible && <WeekAlarmGuide onDismiss={dismissWeekGuide} />}
     </main>
+  );
+}
+
+function NotifGuide({ onDismiss }) {
+  const [anchorRect, setAnchorRect] = useState(null);
+
+  useLayoutEffect(() => {
+    const el = document.getElementById("notif-guide-anchor");
+    if (!el) return;
+    setAnchorRect(el.getBoundingClientRect());
+  }, []);
+
+  if (!anchorRect) return null;
+
+  const TOOLTIP_W = 280;
+  const cx = anchorRect.left + anchorRect.width / 2;
+  const cy = anchorRect.top + anchorRect.height / 2;
+  const tooltipLeft = Math.max(8, Math.min(cx - TOOLTIP_W / 2, window.innerWidth - TOOLTIP_W - 8));
+  const tooltipTop = anchorRect.bottom + 16;
+  const arrowLeft = cx - tooltipLeft - 7;
+
+  return createPortal(
+    <>
+      <div
+        className="week-guide-overlay"
+        style={{
+          background: `radial-gradient(ellipse ${anchorRect.width * 0.7}px ${anchorRect.height * 0.8}px at ${cx}px ${cy}px, transparent 55%, rgba(0,0,0,0.6) 80%)`,
+        }}
+        onClick={() => onDismiss(false)}
+      />
+      <div className="week-guide" style={{ top: tooltipTop, left: tooltipLeft, width: TOOLTIP_W }}>
+        <div className="week-guide__arrow" style={{ left: Math.max(10, arrowLeft) }} />
+        <p className="week-guide__title">Notificações</p>
+        <p className="week-guide__body">
+          Receba avisos de fim de sessão e alertas de alarme das tarefas mesmo
+          com a aba fechada.
+        </p>
+        <button
+          type="button"
+          className="week-guide__btn"
+          onClick={() => onDismiss(true)}
+        >
+          Ativar notificações
+        </button>
+        <button
+          type="button"
+          className="week-guide__btn week-guide__btn--ghost"
+          onClick={() => onDismiss(false)}
+        >
+          Agora não
+        </button>
+      </div>
+    </>,
+    document.body
+  );
+}
+
+function WeekAlarmGuide({ onDismiss }) {
+  const [bellRect, setBellRect] = useState(null);
+
+  useLayoutEffect(() => {
+    const bell = document.querySelector(".lane__alarm");
+    if (!bell) return;
+    setBellRect(bell.getBoundingClientRect());
+  }, []);
+
+  if (!bellRect) return null;
+
+  const TOOLTIP_W = 264;
+  const cx = bellRect.left + bellRect.width / 2;
+  const cy = bellRect.top + bellRect.height / 2;
+  const tooltipLeft = Math.max(8, Math.min(cx - TOOLTIP_W / 2, window.innerWidth - TOOLTIP_W - 8));
+  const tooltipTop = bellRect.bottom + 14;
+  const arrowLeft = cx - tooltipLeft - 7;
+
+  return createPortal(
+    <>
+      <div
+        className="week-guide-overlay"
+        style={{
+          background: `radial-gradient(circle 30px at ${cx}px ${cy}px, transparent 24px, rgba(0,0,0,0.6) 36px)`,
+        }}
+        onClick={onDismiss}
+      />
+      <div
+        className="week-guide"
+        style={{ top: tooltipTop, left: tooltipLeft }}
+      >
+        <div className="week-guide__arrow" style={{ left: Math.max(10, arrowLeft) }} />
+        <p className="week-guide__title">Alarmes por dia</p>
+        <p className="week-guide__body">
+          Toque no sino de qualquer coluna para configurar um alarme para aquele
+          dia. Ele dispara mesmo com a aba em segundo plano.
+        </p>
+        <button type="button" className="week-guide__btn" onClick={onDismiss}>
+          Entendi
+        </button>
+      </div>
+    </>,
+    document.body
   );
 }
 
@@ -1299,6 +1452,31 @@ function TimerApp({ session, onLogout, entered }) {
   const [settingsReady, setSettingsReady] = useState(!session?.user);
   const [settingsError, setSettingsError] = useState("");
   const userId = session?.user?.id;
+
+  const [notifGuideVisible, setNotifGuideVisible] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+    if (localStorage.getItem("fluxtime.notif-guide-dismissed")) return;
+    const t = setTimeout(() => setNotifGuideVisible(true), 900);
+    return () => clearTimeout(t);
+  }, [userId]);
+
+  const dismissNotifGuide = async (activate) => {
+    localStorage.setItem("fluxtime.notif-guide-dismissed", "1");
+    setNotifGuideVisible(false);
+    if (activate) {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") syncPushSubscription(userId);
+    }
+  };
+
+  // Subscrição Web Push: dispara ao logar, silencioso se permissão negada.
+  useEffect(() => {
+    if (userId) syncPushSubscription(userId);
+  }, [userId]);
 
   // Verificador global de alarmes: roda independente da secao ativa.
   const globalFiredRef = useRef(new Set());
@@ -1564,6 +1742,9 @@ function TimerApp({ session, onLogout, entered }) {
         description={alarmToast.description}
         onDone={() => setAlarmToast(null)}
       />
+    )}
+    {notifGuideVisible && (
+      <NotifGuide onDismiss={dismissNotifGuide} />
     )}
     </>
   );
