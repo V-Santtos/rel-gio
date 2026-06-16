@@ -10,13 +10,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
       includeAssets: ["favicon.svg", "icon.svg"],
       manifest: {
         name: "Flux Time",
         short_name: "Flux Time",
         description: "Pomodoro pessoal: cronometre estudo e pausas com estilo flip clock.",
         lang: "pt-BR",
-        theme_color: "#ec5b53",
+        theme_color: "#101010",
         background_color: "#101010",
         display: "standalone",
         orientation: "portrait",
@@ -31,7 +34,7 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,mp3}"],
       },
     }),

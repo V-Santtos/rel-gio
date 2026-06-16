@@ -12,8 +12,9 @@ export default function Sidebar({ items, active, onChange }) {
   const indicatorRef = useRef(null);
   const btnRefs = useRef({});
   const first = useRef(true);
+  const moveIndicatorRef = useRef(null);
 
-  const moveIndicator = (animate) => {
+  moveIndicatorRef.current = (animate) => {
     const btn = btnRefs.current[active];
     const ind = indicatorRef.current;
     if (!btn || !ind) return;
@@ -27,16 +28,14 @@ export default function Sidebar({ items, active, onChange }) {
   };
 
   useLayoutEffect(() => {
-    moveIndicator(!first.current);
+    moveIndicatorRef.current(!first.current);
     first.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   useEffect(() => {
-    const onResize = () => moveIndicator(false);
+    const onResize = () => moveIndicatorRef.current(false);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
