@@ -1,0 +1,16 @@
+/* ============================================================
+   Mobile — Kanban (list view)
+   Colunas empilhadas full-width, cards comprimidos, dias vazios
+   colapsados. Toque abre o CardModal existente.
+   Breakpoint: 768px.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Toast: sobe acima da bottom nav e ocupa a largura disponível */
+  .alarm-toast {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}

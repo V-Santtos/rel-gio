@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
-import { LogOut, Moon, Settings, Sun, UserRound, X } from "lucide-react";
+import { LogOut, Menu, Moon, Settings, Sun, UserRound, X } from "lucide-react";
 
 const THEME_KEY = "rel-gio:theme";
 
@@ -86,7 +86,22 @@ export default function AccountMenu({ session, onLogout }) {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {open ? <X size={20} strokeWidth={2.5} /> : <Settings size={20} strokeWidth={2.35} />}
+        {open ? (
+          <X size={20} strokeWidth={2.5} />
+        ) : (
+          <>
+            <Menu
+              size={20}
+              strokeWidth={2.35}
+              className="account-menu__glyph account-menu__glyph--mobile"
+            />
+            <Settings
+              size={20}
+              strokeWidth={2.35}
+              className="account-menu__glyph account-menu__glyph--desktop"
+            />
+          </>
+        )}
       </button>
 
       {open ? (

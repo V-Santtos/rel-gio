@@ -115,3 +115,20 @@ export function showAlarmNotification(title, body) {
     return false;
   }
 }
+
+/** Carrega todos os alarmes de todas as colunas (itera fluxtime.alarms.*). */
+export function loadAllAlarms() {
+  if (typeof window === "undefined") return [];
+  const result = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(KEY_PREFIX)) continue;
+      const laneId = key.slice(KEY_PREFIX.length);
+      loadAlarms(laneId).forEach((a) => result.push({ alarm: a, laneId }));
+    }
+  } catch {
+    /* storage indisponivel */
+  }
+  return result;
+}

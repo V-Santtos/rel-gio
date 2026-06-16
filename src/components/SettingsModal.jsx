@@ -1,15 +1,22 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
-import { X } from "lucide-react";
+import { X, Plus, ChevronDown, Trash2 } from "lucide-react";
 import NumberStepper from "./NumberStepper.jsx";
 import { MAX_CYCLES, clampCycles, fitCycleTimes } from "../lib/cycles.js";
 
 /**
- * Modal central "Montar sessão de foco": define a quantidade de ciclos
+ * Modal "Configurar sessão de foco": define a quantidade de ciclos
  * (1..MAX_CYCLES) e o Foco/Break de CADA ciclo. O Ciclo 1 e o mesmo dos
- * steppers da tela (mesma fonte de dados). Mostra um resumo ao vivo
- * (foco/pausa/total) que respeita a regra de pausa pulada no ultimo ciclo.
+ * steppers da tela (mesma fonte de dados).
+ *
+ * DESKTOP (>=768px): stepper "Quantos ciclos?" + todos os ciclos empilhados,
+ *   cada um com os steppers grandes (visual validado).
+ * MOBILE (<768px): os steppers grandes ficam GIGANTES, entao os ciclos viram
+ *   CARDS estilo Kanban — cada ciclo e um card RESUMIDO (Foco/Break em texto);
+ *   tocar EXPANDE o card e revela os steppers pra editar. "+" adiciona ciclo,
+ *   lixeira remove. Sem o bloco "Quantos ciclos?" (a contagem vem dos cards).
+ *
  * Segue as Web Interface Guidelines: Escape, foco preso, inert no fundo,
  * retorno de foco, overscroll e prefers-reduced-motion.
  */
@@ -19,10 +26,27 @@ export default function SettingsModal({ config, setConfig, onClose }) {
   const closingRef = useRef(false);
   const cycleRefs = useRef([]);
   const prevCountRef = useRef(config.cycleTimes.length);
+  const cardBodyRef = useRef(null);
 
   const cycleTimes = config.cycleTimes;
-
   const totalCount = cycleTimes.length;
+
+  // Mobile reativo (rotacao/resize) + qual card esta expandido (mobile).
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 768px)").matches
+  );
+  const [expandedCycle, setExpandedCycle] = useState(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const reduce = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const setCount = (n) => {
     const count = clampCycles(n);
@@ -33,10 +57,8 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     }));
   };
 
-  // S1 — ao MUDAR a quantidade de ciclos: aumentar deixa o(s) bloco(s) novo(s)
-  // entrarem animados (a entrada propria roda no useLayoutEffect abaixo);
-  // diminuir recolhe os blocos que vao sair (altura + fade) ANTES de remover
-  // do estado, em vez de sumirem secos.
+  // S1 — ao MUDAR a quantidade de ciclos (desktop): aumentar deixa o(s) bloco(s)
+  // novo(s) entrarem animados; diminuir recolhe os que saem ANTES de remover.
   const applyCount = (n) => {
     const count = clampCycles(n);
     if (count >= totalCount || reduce()) {
@@ -62,6 +84,24 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     });
   };
 
+  // Mobile: adicionar/remover ciclo via cards.
+  const addCycle = () => {
+    if (totalCount >= MAX_CYCLES) return;
+    setConfig((c) => {
+      const next = fitCycleTimes(c.cycleTimes, c.cycleTimes.length + 1);
+      return { ...c, cycles: next.length, cycleTimes: next };
+    });
+    setExpandedCycle(totalCount); // abre o card recem-criado pra editar
+  };
+  const removeCycleAt = (index) => {
+    if (totalCount <= 1) return;
+    setConfig((c) => {
+      const arr = c.cycleTimes.filter((_, i) => i !== index);
+      return { ...c, cycles: arr.length, cycleTimes: arr };
+    });
+    setExpandedCycle(null);
+  };
+
   const patchCycle = (index, patch) => {
     setConfig((c) => ({
       ...c,
@@ -71,8 +111,14 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     }));
   };
 
-  const reduce = () =>
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Resumo curto do card (ex.: "Foco 25min · Break 5min").
+  const fmtDur = (h, m, s) => {
+    const p = [];
+    if (h) p.push(`${h}h`);
+    if (m) p.push(`${m}min`);
+    if (s) p.push(`${s}s`);
+    return p.length ? p.join(" ") : "0min";
+  };
 
   // Entrada (GSAP) + foco inicial no painel.
   useLayoutEffect(() => {
@@ -90,8 +136,7 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     panelRef.current?.focus({ preventScroll: true });
   }, []);
 
-  // S1 — entrada do(s) bloco(s) recem-adicionado(s): cresce de altura + fade.
-  // So roda quando a quantidade AUMENTA; ignora o primeiro render e reducoes.
+  // S1 — entrada do(s) bloco(s) recem-adicionado(s) no DESKTOP: cresce + fade.
   useLayoutEffect(() => {
     const prev = prevCountRef.current;
     prevCountRef.current = totalCount;
@@ -111,6 +156,20 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalCount]);
+
+  // Mobile: abre o card expandido com altura + fade (so quando algo abre).
+  useLayoutEffect(() => {
+    const el = cardBodyRef.current;
+    if (!el || expandedCycle === null || reduce()) return;
+    gsap.set(el, { overflow: "hidden" });
+    gsap.from(el, {
+      height: 0,
+      opacity: 0,
+      duration: 0.32,
+      ease: "power3.out",
+      onComplete: () => gsap.set(el, { clearProps: "height,overflow,opacity" }),
+    });
+  }, [expandedCycle]);
 
   // inert + aria-hidden no fundo enquanto aberto; restaura o foco ao fechar.
   useEffect(() => {
@@ -180,6 +239,61 @@ export default function SettingsModal({ config, setConfig, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Corpo de um ciclo (Foco H/M/S + Break M/S) — steppers grandes (validados).
+  // Reusado pelo empilhado (desktop) e pelo card expandido (mobile).
+  const renderCycleBody = (c, i) => (
+    <div className="sessmodal__cycle-body">
+      <div className="sessmodal__group">
+        <span className="sessmodal__group-title">Foco</span>
+        <div className="stepper-row">
+          <NumberStepper
+            label="Horas"
+            value={c.focusHours}
+            min={0}
+            max={23}
+            onChange={(v) => patchCycle(i, { focusHours: v })}
+          />
+          <NumberStepper
+            label="Min"
+            value={c.focusMinutes}
+            min={0}
+            max={59}
+            onChange={(v) => patchCycle(i, { focusMinutes: v })}
+          />
+          <NumberStepper
+            label="Seg"
+            value={c.focusSeconds}
+            min={0}
+            max={59}
+            onChange={(v) => patchCycle(i, { focusSeconds: v })}
+          />
+        </div>
+      </div>
+
+      <div className="sessmodal__group-divider" aria-hidden="true" />
+
+      <div className="sessmodal__group">
+        <span className="sessmodal__group-title">Break</span>
+        <div className="stepper-row">
+          <NumberStepper
+            label="Min"
+            value={c.breakMinutes}
+            min={0}
+            max={59}
+            onChange={(v) => patchCycle(i, { breakMinutes: v })}
+          />
+          <NumberStepper
+            label="Seg"
+            value={c.breakSeconds}
+            min={0}
+            max={59}
+            onChange={(v) => patchCycle(i, { breakSeconds: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return createPortal(
     <div
       className="sessmodal"
@@ -202,92 +316,112 @@ export default function SettingsModal({ config, setConfig, onClose }) {
           </button>
         </div>
 
-        <div className="sessmodal__count">
-          <div className="sessmodal__count-text">
-            <div className="sessmodal__summary" aria-live="polite">
-              <span className="sessmodal__count-label">Quantos ciclos?</span>
-              <span className="sessmodal__count-hint">
-                Cada ciclo é um bloco de foco seguido de uma pausa.
-                <br />
-                Você pode configurar até {MAX_CYCLES} ciclos diretos de
-                estudo/trabalho.
-              </span>
-            </div>
+        {isMobile ? (
+          // MOBILE: cards estilo Kanban (resumo -> toca -> expande).
+          <div className="cyclecards">
+            {cycleTimes.map((c, i) => {
+              const open = expandedCycle === i;
+              return (
+                <div
+                  className={`cyclecard${open ? " is-open" : ""}`}
+                  key={i}
+                >
+                  <button
+                    type="button"
+                    className="cyclecard__head"
+                    aria-expanded={open}
+                    aria-controls={`cyclecard-body-${i}`}
+                    onClick={() => setExpandedCycle(open ? null : i)}
+                  >
+                    <span className="cyclecard__name">Ciclo {i + 1}</span>
+                    <span className="cyclecard__summary">
+                      Foco {fmtDur(c.focusHours, c.focusMinutes, c.focusSeconds)}
+                      {" · "}
+                      Break {fmtDur(0, c.breakMinutes, c.breakSeconds)}
+                    </span>
+                    <ChevronDown
+                      className="cyclecard__chev"
+                      size={18}
+                      strokeWidth={2.4}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  {open ? (
+                    <div
+                      className="cyclecard__body"
+                      id={`cyclecard-body-${i}`}
+                      ref={cardBodyRef}
+                    >
+                      {renderCycleBody(c, i)}
+                      {totalCount > 1 ? (
+                        <button
+                          type="button"
+                          className="cyclecard__remove"
+                          onClick={() => removeCycleAt(i)}
+                        >
+                          <Trash2 size={15} strokeWidth={2.2} />
+                          <span>Remover ciclo</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {totalCount < MAX_CYCLES ? (
+              <button
+                type="button"
+                className="cyclecard__add"
+                onClick={addCycle}
+              >
+                <Plus size={17} strokeWidth={2.4} />
+                <span>Adicionar ciclo</span>
+              </button>
+            ) : null}
           </div>
-          <NumberStepper
-            label="Ciclos"
-            value={config.cycles}
-            min={1}
-            max={MAX_CYCLES}
-            onChange={applyCount}
-          />
-        </div>
-
-        <div className="sessmodal__cycles">
-          {cycleTimes.map((c, i) => (
-            <div
-              className="sessmodal__cycle"
-              key={i}
-              ref={(el) => {
-                cycleRefs.current[i] = el;
-              }}
-            >
-              <div className="sessmodal__cycle-head">
-                <span className="sessmodal__cycle-name">Ciclo {i + 1}</span>
-              </div>
-              <div className="sessmodal__cycle-body">
-                <div className="sessmodal__group">
-                  <span className="sessmodal__group-title">Foco</span>
-                  <div className="stepper-row">
-                    <NumberStepper
-                      label="Horas"
-                      value={c.focusHours}
-                      min={0}
-                      max={23}
-                      onChange={(v) => patchCycle(i, { focusHours: v })}
-                    />
-                    <NumberStepper
-                      label="Min"
-                      value={c.focusMinutes}
-                      min={0}
-                      max={59}
-                      onChange={(v) => patchCycle(i, { focusMinutes: v })}
-                    />
-                    <NumberStepper
-                      label="Seg"
-                      value={c.focusSeconds}
-                      min={0}
-                      max={59}
-                      onChange={(v) => patchCycle(i, { focusSeconds: v })}
-                    />
-                  </div>
-                </div>
-
-                <div className="sessmodal__group-divider" aria-hidden="true" />
-
-                <div className="sessmodal__group">
-                  <span className="sessmodal__group-title">Break</span>
-                  <div className="stepper-row">
-                    <NumberStepper
-                      label="Min"
-                      value={c.breakMinutes}
-                      min={0}
-                      max={59}
-                      onChange={(v) => patchCycle(i, { breakMinutes: v })}
-                    />
-                    <NumberStepper
-                      label="Seg"
-                      value={c.breakSeconds}
-                      min={0}
-                      max={59}
-                      onChange={(v) => patchCycle(i, { breakSeconds: v })}
-                    />
-                  </div>
+        ) : (
+          // DESKTOP: stepper de contagem + ciclos empilhados (validado).
+          <>
+            <div className="sessmodal__count">
+              <div className="sessmodal__count-text">
+                <div className="sessmodal__summary" aria-live="polite">
+                  <span className="sessmodal__count-label">Quantos ciclos?</span>
+                  <span className="sessmodal__count-hint">
+                    Cada ciclo é um bloco de foco seguido de uma pausa.
+                    <br />
+                    Você pode configurar até {MAX_CYCLES} ciclos diretos de
+                    estudo/trabalho.
+                  </span>
                 </div>
               </div>
+              <NumberStepper
+                label="Ciclos"
+                value={config.cycles}
+                min={1}
+                max={MAX_CYCLES}
+                onChange={applyCount}
+              />
             </div>
-          ))}
-        </div>
+
+            <div className="sessmodal__cycles">
+              {cycleTimes.map((c, i) => (
+                <div
+                  className="sessmodal__cycle"
+                  key={i}
+                  ref={(el) => {
+                    cycleRefs.current[i] = el;
+                  }}
+                >
+                  <div className="sessmodal__cycle-head">
+                    <span className="sessmodal__cycle-name">Ciclo {i + 1}</span>
+                  </div>
+                  {renderCycleBody(c, i)}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body

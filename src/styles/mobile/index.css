@@ -1,0 +1,11 @@
+/* ============================================================
+   Mobile — ponto de entrada
+   Importa todos os partials mobile na ordem de cascata.
+   Todo CSS mobile vive aqui (isolado do desktop). Cada partial
+   usa @media (max-width: 768px) — desktop nao e afetado.
+   ============================================================ */
+
+@import "./layout.css";
+@import "./nav.css";
+@import "./timer.css";
+@import "./kanban.css";

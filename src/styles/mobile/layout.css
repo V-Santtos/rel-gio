@@ -1,0 +1,59 @@
+/* ============================================================
+   Mobile — layout base
+   .app, padding, account-menu, theme-switch no mobile.
+   Breakpoint: 768px.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Respira menos nas bordas e respeita o notch (viewport-fit=cover). */
+  .app {
+    gap: clamp(16px, 3vh, 28px);
+    padding: clamp(16px, 4.5vw, 28px);
+    padding-top: max(clamp(16px, 4.5vw, 28px), env(safe-area-inset-top));
+  }
+
+  /* Conta/config vira um HAMBURGUER no topo (canto superior direito), em vez
+     do gear flutuante embaixo (que colidia com a bottom nav). O painel passa
+     a abrir pra BAIXO (flex-direction normal + origem no topo). */
+  .account-menu {
+    top: max(14px, env(safe-area-inset-top));
+    left: clamp(14px, 4vw, 20px);
+    right: auto;
+    bottom: auto;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .account-menu__panel {
+    width: min(270px, calc(100vw - 28px));
+    transform-origin: top left;
+  }
+  /* Troca o gear pelo hamburguer no mobile. */
+  .account-menu__glyph--mobile {
+    display: block;
+  }
+  .account-menu__glyph--desktop {
+    display: none;
+  }
+
+  /* Sem capsula: no mobile o gatilho e SO o hamburguer (sem fundo/borda/sombra).
+     Mantem area de toque confortavel via padding. */
+  .account-menu__trigger {
+    width: auto;
+    height: auto;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--fg);
+  }
+  .account-menu__trigger:hover,
+  .account-menu__trigger.is-open {
+    transform: none;
+  }
+
+  /* theme-switch: atualmente nao montado (o tema vive no AccountMenu).
+     Regra defensiva caso volte a ser usado solto no mobile. */
+  .theme-switch {
+    touch-action: manipulation;
+  }
+}

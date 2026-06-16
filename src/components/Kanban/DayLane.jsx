@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import { Flip } from "gsap/Flip";
@@ -23,13 +23,11 @@ import { labelById } from "./labels.js";
 import {
   loadAlarms,
   saveAlarms,
-  nowHHMM,
-  minuteKey,
   periodForTime,
+  PERIOD_LABELS,
   ensureNotificationPermission,
-  showAlarmNotification,
 } from "./alarms.js";
-import { playAlarm, primeAlarm } from "../../lib/sound.js";
+import { primeAlarm } from "../../lib/sound.js";
 import { makeClientId } from "../../lib/id.js";
 
 gsap.registerPlugin(Flip);
@@ -41,14 +39,32 @@ let orderSeq = 0;
 const nextOrder = () => ++orderSeq;
 
 /**
- * Banner transitorio mostrado quando um alarme dispara COM a aba em foco
- * (quando a aba esta em segundo plano, usamos a Notification do SO). Some
- * sozinho; respeita prefers-reduced-motion.
+ * Notificacao em glass morphism disparada quando um alarme toca com a aba em
+ * foco. Slide-in da direita (GSAP); fecha sozinho em 6,5s ou pelo botao X.
+ * Com a aba em segundo plano usamos a Notification nativa do SO.
  */
-function AlarmToast({ day, description, onDone }) {
+export function AlarmToast({ day, time, description, period, onDone }) {
   const ref = useRef(null);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const timerRef = useRef(null);
+
+  const dismiss = useCallback(() => {
+    clearTimeout(timerRef.current);
+    const el = ref.current;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (el && !reduce) {
+      gsap.to(el, {
+        opacity: 0,
+        x: 52,
+        duration: 0.28,
+        ease: "power2.in",
+        onComplete: () => onDoneRef.current(),
+      });
+    } else {
+      onDoneRef.current();
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -56,37 +72,54 @@ function AlarmToast({ day, description, onDone }) {
     if (el && !reduce) {
       gsap.fromTo(
         el,
-        { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }
+        { opacity: 0, x: 52 },
+        { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }
       );
     }
-    const timer = setTimeout(() => {
-      if (el && !reduce) {
-        gsap.to(el, {
-          opacity: 0,
-          y: 14,
-          duration: 0.3,
-          ease: "power2.in",
-          onComplete: () => onDoneRef.current(),
-        });
-      } else {
-        onDoneRef.current();
-      }
-    }, 6500);
-    return () => clearTimeout(timer);
-  }, []);
+    timerRef.current = setTimeout(dismiss, 6500);
+    return () => clearTimeout(timerRef.current);
+  }, [dismiss]);
 
   return createPortal(
-    <div className="alarm-toast" ref={ref} role="status" aria-live="polite">
-      <span className="alarm-toast__icon" aria-hidden="true">
-        <Bell size={18} strokeWidth={2.4} />
-      </span>
-      <div className="alarm-toast__body">
-        <strong className="alarm-toast__day">{day}</strong>
-        <span className="alarm-toast__text">
-          {description || "Hora do seu alarme."}
-        </span>
+    <div className="alarm-toast" ref={ref} role="alert" aria-live="assertive">
+      <div className="alarm-toast__icon" aria-hidden="true">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="at-grad" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#f0726a"/>
+              <stop offset="1" stopColor="#8c2f33"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="112" fill="url(#at-grad)"/>
+          <g transform="translate(146 146) scale(2.65)" fill="#ffffff">
+            <path d="M34 61C34 52.4 34.9 46.3 36.9 41.8C40.4 34.2 46.3 31 53.3 31H111C110.1 39.7 105.4 45.9 97.6 48.3C97 48.5 96.1 48.6 95.1 48.6H50.8C43.8 48.6 37.5 53.2 34 61Z" transform="translate(-34 -31)"/>
+            <path d="M34 82.6C34 72.8 36.5 64.3 42.8 58.3C46.2 55.1 50.3 54 55 54H82C80.8 62.3 75.1 68.9 66.4 71.1C65.3 71.4 64.3 71.5 63.1 71.5H47.2C41.1 71.5 36.4 76.1 34 82.6Z" transform="translate(-34 -31)"/>
+            <path d="M34 108V92.4C34 84.8 40.9 77.7 49.2 76.2C50.1 76.1 50.8 76 52 76V91.5C52 99.6 44.9 106.5 36.7 107.8C35.8 107.9 34.9 108 34 108Z" transform="translate(-34 -31)"/>
+          </g>
+        </svg>
       </div>
+
+      <div className="alarm-toast__content">
+        <div className="alarm-toast__header">
+          <span className="alarm-toast__app">Flux Time</span>
+          {time && (
+            <span className="alarm-toast__time">
+              <Bell size={12} strokeWidth={2.4} aria-hidden="true" />
+              {time}
+            </span>
+          )}
+        </div>
+        {description && <span className="alarm-toast__desc">{description}</span>}
+      </div>
+
+      <button
+        type="button"
+        className="alarm-toast__close"
+        onClick={dismiss}
+        aria-label="Fechar notificação"
+      >
+        <X size={13} strokeWidth={2.5} />
+      </button>
     </div>,
     document.body
   );
@@ -156,8 +189,6 @@ export default function DayLane({
   );
   const [alarmsOpen, setAlarmsOpen] = useState(false);
   const [alarmEditId, setAlarmEditId] = useState(null);
-  const [toast, setToast] = useState(null);
-
   const bodyRef = useRef(null);
   const chevronRef = useRef(null);
   const inputRef = useRef(null);
@@ -167,7 +198,6 @@ export default function DayLane({
   const menuBtnRef = useRef(null);
   const nameInputRef = useRef(null);
   const bellRef = useRef(null);
-  const firedRef = useRef(new Set());
   // Arraste de itens dentro da coluna (Etapa 2): item arrastado + ultimo alvo
   // sob o cursor (anti-flick) + estado Flip capturado antes do rearranjo.
   const dragItem = useRef(null);
@@ -326,59 +356,11 @@ export default function DayLane({
   }, [alarmsOpen]);
 
   // Persiste os alarmes do dia (localStorage), chaveado pelo laneId.
+  // Espelha alarmes no localStorage para que o verificador global (App.jsx) possa
+  // ler o estado atual independente da secao ativa (Foco, Cronometro, Tarefas).
   useEffect(() => {
-    if (initialAlarms) return;
     saveAlarms(laneId, alarms);
-  }, [alarms, initialAlarms, laneId]);
-
-  // Verificador: a cada ~15s compara o relogio com os alarmes ativos e dispara
-  // os que batem o minuto atual (uma vez por minuto, via firedRef). Roda mesmo
-  // com a aba em segundo plano (o navegador limita a ~1x/min, que basta).
-  useEffect(() => {
-    const fire = (alarm) => {
-      playAlarm();
-      if (bellRef.current && !prefersReduced()) {
-        gsap.fromTo(
-          bellRef.current,
-          { scale: 1 },
-          {
-            scale: 1.28,
-            duration: 0.18,
-            yoyo: true,
-            repeat: 5,
-            ease: "power1.inOut",
-            onComplete: () => gsap.set(bellRef.current, { scale: 1 }),
-          }
-        );
-      }
-      const text = alarm.description || "Hora do seu alarme.";
-      const shownAsSystem =
-        document.hidden && showAlarmNotification(`🔔 ${name}`, text);
-      if (!shownAsSystem) {
-        setToast({ key: `${alarm.id}-${Date.now()}`, day: name, description: text });
-      }
-    };
-
-    const check = () => {
-      // Alarme e um recurso do Modo Semana: so dispara nesse modo.
-      if (mode !== "week") return;
-      const active = alarms.filter((a) => a.enabled);
-      if (!active.length) return;
-      const hhmm = nowHHMM();
-      const mk = minuteKey();
-      active.forEach((alarm) => {
-        if (alarm.time !== hhmm) return;
-        const id = `${alarm.id}@${mk}`;
-        if (firedRef.current.has(id)) return;
-        firedRef.current.add(id);
-        fire(alarm);
-      });
-    };
-
-    check();
-    const interval = setInterval(check, 15000);
-    return () => clearInterval(interval);
-  }, [alarms, name, mode]);
+  }, [alarms, laneId]);
 
   // Sair do Modo Semana fecha o popover de alarmes (so existe nesse modo).
   useEffect(() => {
@@ -811,7 +793,7 @@ export default function DayLane({
           />
         ) : mode === "week" ? (
           <h2 className="lane__title is-locked" title="Nome fixo no Modo Semana">
-            {name}
+            {day}
           </h2>
         ) : (
           <h2
@@ -987,14 +969,6 @@ export default function DayLane({
         />
       ) : null}
 
-      {toast ? (
-        <AlarmToast
-          key={toast.key}
-          day={toast.day}
-          description={toast.description}
-          onDone={() => setToast(null)}
-        />
-      ) : null}
     </section>
   );
 }

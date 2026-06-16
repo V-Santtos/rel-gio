@@ -14,10 +14,13 @@ import {
   List,
   CalendarDays,
   Plus,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import FlipClock from "./components/FlipClock/FlipClock.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import MobileNav from "./components/MobileNav.jsx";
 import DayLane from "./components/Kanban/DayLane.jsx";
 import {
   DEFAULT_LABELS,
@@ -34,7 +37,14 @@ import {
 import AuthPanel from "./components/AuthPanel.jsx";
 import { useTimer } from "./hooks/useTimer.js";
 import { useStopwatch } from "./hooks/useStopwatch.js";
-import { playPhaseEnd, playTick, primeAudio } from "./lib/sound.js";
+import { playPhaseEnd, playTick, primeAudio, playAlarm } from "./lib/sound.js";
+import {
+  loadAllAlarms,
+  nowHHMM,
+  minuteKey,
+  showAlarmNotification,
+} from "./components/Kanban/alarms.js";
+import { AlarmToast } from "./components/Kanban/DayLane.jsx";
 import { makeClientId } from "./lib/id.js";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
 
@@ -121,6 +131,14 @@ const SIDEBAR_ITEMS = [
   { id: "foco", label: "Foco", Icon: Target },
   { id: "cronometro", label: "Cronômetro", Icon: Timer },
   { id: "tarefas", label: "Tarefas", Icon: ListChecks },
+];
+
+// Bottom nav (mobile): Foco no meio (vira o circulo elevado quando ativo, que
+// e o estado inicial do app), Cronometro a esquerda e Tarefas a direita.
+const MOBILE_NAV_ITEMS = [
+  SIDEBAR_ITEMS[1], // Cronometro
+  SIDEBAR_ITEMS[0], // Foco
+  SIDEBAR_ITEMS[2], // Tarefas
 ];
 
 function loadConfig() {
@@ -300,6 +318,21 @@ function FocoSection({
             Ciclo {timer.cycle}/{timer.cycles}
           </span>
         ) : null}
+        {/* Botao de tela cheia no nivel do palco — so aparece no mobile (canto
+            superior direito, junto do indicador de ciclo). No desktop quem
+            cuida disso e o botao dentro do ultimo claquete (flip-unit__action). */}
+        <button
+          type="button"
+          className="focus-expand"
+          onClick={onToggleExpand}
+          aria-label={expanded ? "Recolher relógio" : "Expandir relógio em tela cheia"}
+        >
+          {expanded ? (
+            <Minimize strokeWidth={2.2} />
+          ) : (
+            <Maximize strokeWidth={2.2} />
+          )}
+        </button>
         <PhaseTimerDisplay
           timer={timer}
           showHours={showHours}
@@ -708,10 +741,13 @@ function TarefasSection({ userId }) {
       el.style.setProperty("--fade-r", canRight ? "64px" : "0px");
     };
     updateFades();
+    const ro = new ResizeObserver(updateFades);
+    ro.observe(el);
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("scroll", updateFades, { passive: true });
     window.addEventListener("resize", updateFades);
     return () => {
+      ro.disconnect();
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("scroll", updateFades);
       window.removeEventListener("resize", updateFades);
@@ -1213,7 +1249,9 @@ function TarefasSection({ userId }) {
       {boardReady ? visibleLanes.map((lane) => (
         <DayLane
           key={lane.id}
-          day={lane.title}
+          day={isWeekDayKey(lane.dayKey)
+            ? DIAS_SEMANA[WEEK_DAY_KEYS.indexOf(lane.dayKey)]
+            : lane.title}
           laneId={lane.id}
           initialName={lane.title}
           initialCards={lane.cards}
@@ -1261,6 +1299,35 @@ function TimerApp({ session, onLogout, entered }) {
   const [settingsReady, setSettingsReady] = useState(!session?.user);
   const [settingsError, setSettingsError] = useState("");
   const userId = session?.user?.id;
+
+  // Verificador global de alarmes: roda independente da secao ativa.
+  const globalFiredRef = useRef(new Set());
+  const [alarmToast, setAlarmToast] = useState(null);
+
+  useEffect(() => {
+    const check = () => {
+      const all = loadAllAlarms();
+      const active = all.filter((e) => e.alarm.enabled);
+      if (!active.length) return;
+      const hhmm = nowHHMM();
+      const mk = minuteKey();
+      active.forEach(({ alarm }) => {
+        if (alarm.time !== hhmm) return;
+        const id = `${alarm.id}@${mk}`;
+        if (globalFiredRef.current.has(id)) return;
+        globalFiredRef.current.add(id);
+        playAlarm();
+        const text = alarm.description || "Hora do seu alarme.";
+        const shownAsSystem = document.hidden && showAlarmNotification("🔔 Flux Time", text);
+        if (!shownAsSystem) {
+          setAlarmToast({ key: `${alarm.id}-${Date.now()}`, time: alarm.time, description: text });
+        }
+      });
+    };
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -1455,12 +1522,14 @@ function TimerApp({ session, onLogout, entered }) {
   }, [revealActive]);
 
   return (
+    <>
     <div
       className={`app${isRunning ? " is-running" : ""}${
         revealActive && revealed ? " is-revealed" : ""
       }${focoExpanded ? " is-expanded" : ""}`}
     >
       <Sidebar items={SIDEBAR_ITEMS} active={section} onChange={setSection} />
+      <MobileNav items={MOBILE_NAV_ITEMS} active={section} onChange={setSection} />
 
       <AccountMenu session={session} onLogout={onLogout} />
 
@@ -1487,6 +1556,16 @@ function TimerApp({ session, onLogout, entered }) {
       </div>
 
     </div>
+
+    {alarmToast && (
+      <AlarmToast
+        key={alarmToast.key}
+        time={alarmToast.time}
+        description={alarmToast.description}
+        onDone={() => setAlarmToast(null)}
+      />
+    )}
+    </>
   );
 }
 

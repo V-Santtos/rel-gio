@@ -40,7 +40,6 @@ export default function FlipClock({ totalSeconds, showHours, onExpand, expanded,
         <div className="flip-cell" key={label}>
           <FlipUnit
             value={value}
-            badge={i === 0 ? "AM" : undefined}
             action={
               i === lastIndex && onExpand ? (
                 <button

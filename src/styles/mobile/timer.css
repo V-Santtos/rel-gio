@@ -1,0 +1,281 @@
+/* ============================================================
+   Mobile — Foco + Cronometro
+   Flip clock + controles do Foco e Cronometro no mobile.
+   Breakpoint: 768px.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* ---- "Configurar sessao de foco" vira BOTTOM SHEET ----
+     Em vez de um card centralizado que estica pra tela inteira, ele cola
+     embaixo, ocupa so a altura do conteudo, com cantos arredondados em cima
+     e um puxador (grabber) — padrao de sheet nativo. */
+  .sessmodal {
+    place-items: end stretch;
+    padding: 0;
+  }
+  .sessmodal__panel {
+    width: 100%;
+    max-width: none;
+    max-height: 90vh;
+    border-radius: 24px 24px 0 0;
+    padding: 22px 16px calc(18px + env(safe-area-inset-bottom));
+    transform-origin: bottom center; /* a animacao de escala cresce do fundo */
+  }
+  /* Puxador do sheet. */
+  .sessmodal__panel::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: var(--field-border);
+  }
+
+  /* Espacamentos mais justos: compacta o vertical no mobile. */
+  .sessmodal__count {
+    margin-top: 14px;
+    padding-bottom: 14px;
+  }
+  .sessmodal__cycles {
+    margin-top: 14px;
+    gap: 10px;
+  }
+  .sessmodal__cycle {
+    padding: 12px 12px 14px;
+  }
+
+  /* ---- Ciclos como CARDS estilo Kanban (mobile) ----
+     Cada ciclo e um card RESUMIDO (Foco/Break em texto) numa superficie mais
+     funda (--lane-bg, espelha as lanes do Kanban). Tocar EXPANDE e revela os
+     steppers grandes (validados) pra editar. "+" adiciona, lixeira remove.
+     A profundidade vem do token: trocar --lane-bg muda os dois eixos do tema. */
+  .cyclecards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .cyclecard {
+    border: 1px solid var(--kcard-border);
+    border-radius: 14px;
+    background: var(--lane-bg);
+    overflow: hidden;
+  }
+  .cyclecard__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 14px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .cyclecard__name {
+    flex: 0 0 auto;
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .cyclecard__summary {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cyclecard__chev {
+    flex: 0 0 auto;
+    color: var(--muted);
+    transition: transform 0.25s ease;
+  }
+  .cyclecard.is-open .cyclecard__chev {
+    transform: rotate(180deg);
+  }
+  .cyclecard__head:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 14px;
+  }
+  .cyclecard__body {
+    padding: 2px 14px 14px;
+  }
+  .cyclecard__remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform 0.12s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .cyclecard__remove:active {
+    transform: scale(0.97);
+  }
+  .cyclecard__remove:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .cyclecard__add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform 0.12s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .cyclecard__add:active {
+    transform: scale(0.98);
+  }
+  .cyclecard__add:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---- Tela de FOCO: flip clock na VERTICAL ----
+     Empilha (Minutos em cima, Segundos embaixo). Os rotulos voltam pra BAIXO
+     de cada cartao (legenda colada na peca, nao mais solta na lateral). A
+     coluna do relogio vira a ANCORA: a .focus-stage cresce (flex:1) e centra
+     os cartoes no terco superior-central; os controles caem na zona do polegar
+     (logo acima da bottom nav). Tamanhos levemente reduzidos pra abrir espaco
+     pras legendas sob os cartoes. */
+  .flip-clock {
+    flex-direction: column;
+    align-items: center;
+    --unit-w: clamp(108px, 18vh, 168px);
+    --unit-h: clamp(116px, 19.5vh, 184px);
+    --unit-font: clamp(96px, 16vh, 154px);
+    --card-gap: clamp(8px, 1.6vh, 16px);
+  }
+  /* Com 3 cartoes (HH:MM:SS) a coluna fica mais alta -> reduz pra caber. */
+  .flip-clock--hours {
+    --unit-w: clamp(88px, 13.5vh, 126px);
+    --unit-h: clamp(98px, 15vh, 140px);
+    --unit-font: clamp(78px, 12vh, 114px);
+    --card-gap: clamp(5px, 1vh, 10px);
+  }
+
+  /* Legenda COLADA embaixo de cada cartao (volta ao fluxo, centralizada). */
+  .flip-cell {
+    gap: clamp(4px, 0.9vh, 9px);
+  }
+  .flip-cell__label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  /* No mobile o botao de tela cheia NAO fica mais dentro do claquete:
+     migrou pro nivel do palco (.focus-expand). Esconde o do cartao. */
+  .flip-unit__action {
+    display: none;
+  }
+
+  /* Botao de tela cheia no canto superior direito do palco, junto do "Ciclo".
+     (No desktop ele fica display:none; aqui ganha posicao e toque app-nativo.) */
+  .focus-expand {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+    color: var(--clock-text);
+    opacity: 0.5;
+    cursor: pointer;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: opacity 0.18s ease, transform 0.12s ease;
+  }
+  .focus-expand svg {
+    width: 22px;
+    height: auto;
+  }
+  .focus-expand:active {
+    transform: scale(0.9);
+  }
+  .focus-expand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 10px;
+    opacity: 0.9;
+  }
+  /* Em tela cheia o palco e fixed/inset:0 -> respeita o notch nas pontas. */
+  .app.is-expanded .focus-expand {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+  }
+
+  /* ---- Distribuicao vertical inteligente ----
+     A stage CRESCE e centra como GRUPO o "Ciclo" + o relogio: o indicador volta
+     pro fluxo, COLADO logo acima do primeiro cartao (nao mais solto no topo).
+     Os controles caem na zona do polegar, com folga da bottom nav. */
+  .focus-stage {
+    flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 1.4vh, 14px);
+  }
+  .focus-stage.has-cycles {
+    padding-top: 0;
+  }
+  /* "Ciclo X/Y" colado em cima dos cartoes, centralizado (sai do absoluto).
+     padding-left compensa o letter-spacing (espaco solto a direita da ultima
+     letra) pra centrar OPTICAMENTE com o claquete. */
+  .cycle-indicator {
+    position: static;
+    transform: none;
+    top: auto;
+    left: auto;
+    padding-left: 0.16em;
+  }
+  .focus-actions {
+    flex: 0 0 auto;
+    margin-bottom: clamp(18px, 4vh, 40px);
+  }
+  .content {
+    gap: clamp(14px, 2.6vh, 26px);
+  }
+
+  /* Glow do "Iniciar" mais contido no mobile (sombra tingida, sem halo neon). */
+  .btn--cta {
+    box-shadow: 0 8px 18px -10px var(--accent-glow);
+  }
+  .btn--cta:hover {
+    box-shadow: 0 10px 22px -10px var(--accent-glow);
+  }
+}
