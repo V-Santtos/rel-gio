@@ -10,6 +10,7 @@ import {
   X,
   Archive,
   CheckSquare,
+  CheckCircle,
   Bell,
   Sunrise,
   Sun,
@@ -125,6 +126,49 @@ export function AlarmToast({ day, time, description, period, onDone }) {
   );
 }
 
+function AlarmSaveToast({ message, onDone }) {
+  const ref = useRef(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (el && !reduce) {
+      gsap.fromTo(
+        el,
+        { opacity: 0, y: 18, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.24, ease: "power2.out" }
+      );
+    }
+
+    const timer = setTimeout(() => {
+      if (el && !reduce) {
+        gsap.to(el, {
+          opacity: 0,
+          y: 14,
+          scale: 0.98,
+          duration: 0.2,
+          ease: "power2.in",
+          onComplete: () => onDoneRef.current(),
+        });
+      } else {
+        onDoneRef.current();
+      }
+    }, 1600);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return createPortal(
+    <div className="alarm-save-toast" ref={ref} role="status" aria-live="polite">
+      <CheckCircle size={16} strokeWidth={2.5} aria-hidden="true" />
+      <span>{message}</span>
+    </div>,
+    document.body
+  );
+}
+
 /**
  * Coluna-dia do Kanban semanal (Camada 1). Visual baseado na lane do Obsidian
  * Kanban, recriado em CSS puro + GSAP no padrao do projeto:
@@ -189,6 +233,7 @@ export default function DayLane({
   );
   const [alarmsOpen, setAlarmsOpen] = useState(false);
   const [alarmEditId, setAlarmEditId] = useState(null);
+  const [alarmSaveToast, setAlarmSaveToast] = useState(null);
   const bodyRef = useRef(null);
   const chevronRef = useRef(null);
   const inputRef = useRef(null);
@@ -207,6 +252,10 @@ export default function DayLane({
 
   const prefersReduced = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const showAlarmSaveToast = (message) => {
+    setAlarmSaveToast({ key: `${message}-${Date.now()}`, message });
+  };
 
   useEffect(() => {
     setCards(initialCards);
@@ -375,14 +424,17 @@ export default function DayLane({
     const nextAlarm = { ...alarm, id: alarm.id || makeClientId(), order: nextOrder() };
     setAlarms((list) => [...list, nextAlarm]);
     onCreateAlarm?.(nextAlarm);
+    showAlarmSaveToast("Alarme criado");
   };
-  const updateAlarm = (alarm) =>
+  const updateAlarm = (alarm) => {
     setAlarms((list) => {
       const next = list.map((a) => (a.id === alarm.id ? { ...a, ...alarm } : a));
       const changed = next.find((a) => a.id === alarm.id);
       if (changed) onUpdateAlarm?.(changed);
       return next;
     });
+    showAlarmSaveToast("Alarme salvo");
+  };
   const toggleAlarm = (id) =>
     setAlarms((list) => {
       const next = list.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a));
@@ -430,8 +482,7 @@ export default function DayLane({
     onCreateCard?.(nextCard);
     setDraft("");
     pendingPop.current = nextCard.id;
-    // Mantem o compositor aberto p/ adicionar varios em sequencia (estilo Obsidian).
-    inputRef.current?.focus();
+    setComposing(false);
   };
 
   const closeComposer = () => {
@@ -976,6 +1027,14 @@ export default function DayLane({
           onChange={(patch) => updateCard(selectedCard.id, patch)}
           onDelete={() => deleteCard(selectedCard.id)}
           onClose={() => setSelectedId(null)}
+        />
+      ) : null}
+
+      {alarmSaveToast ? (
+        <AlarmSaveToast
+          key={alarmSaveToast.key}
+          message={alarmSaveToast.message}
+          onDone={() => setAlarmSaveToast(null)}
         />
       ) : null}
 

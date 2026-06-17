@@ -103,8 +103,6 @@ function AlarmForm({ initialAlarm, periodsWithCards, onBack, onSave, directEdit 
             maxLength={2}
             placeholder="00"
             aria-label="Hora"
-            // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
             onChange={onHours}
             onFocus={(e) => e.target.select()}
             onBlur={() => setHours((h) => pad2(h))}
@@ -191,7 +189,7 @@ export default function AlarmsPopover({
     } else {
       onCreate(alarm);
     }
-    setEditing(null);
+    onClose();
   };
 
   return (

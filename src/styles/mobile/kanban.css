@@ -15,6 +15,10 @@
     left: 16px;
     width: auto;
   }
+  .alarm-save-toast {
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 32px);
+  }
 
   /* ── Header: título "Tarefas" + segmented Padrão/Semana ────── */
   /* Linha 1 = título (alinhado ao hamburguer fixo à esquerda).
@@ -306,5 +310,95 @@
     color: var(--muted);
     font-weight: 500;
     letter-spacing: normal;
+  }
+}
+
+@media (max-width: 768px) {
+  .kpop.kpop--alarms {
+    top: auto !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-height: min(430px, calc(100dvh - 34px - env(safe-area-inset-bottom, 0px))) !important;
+    gap: 12px;
+    padding: 10px 12px 12px;
+    border-radius: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .kpop.kpop--alarms::before {
+    content: "";
+    align-self: center;
+    width: 34px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--fg) 22%, transparent);
+  }
+  .kpop.kpop--alarms .kpop__head {
+    min-height: 28px;
+  }
+  .kpop.kpop--alarms .kpop__title {
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .kpop.kpop--alarms .alarm-list {
+    max-height: 180px;
+  }
+  .kpop.kpop--alarms .alarm-row {
+    grid-template-columns: 22px minmax(0, 1fr) 34px 34px;
+    gap: 8px;
+  }
+  .kpop.kpop--alarms .alarm-row__main {
+    min-height: 42px;
+    justify-content: center;
+  }
+  .kpop.kpop--alarms .alarm-row__edit,
+  .kpop.kpop--alarms .alarm-row__delete,
+  .kpop.kpop--alarms .kpop__close,
+  .kpop.kpop--alarms .kpop__back {
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .kpop.kpop--alarms .kpop__create-label {
+    height: 42px;
+    border-radius: 10px;
+  }
+  .kpop.kpop--alarms .alarm-form {
+    gap: 13px;
+  }
+  .kpop.kpop--alarms .alarm-form__field {
+    gap: 8px;
+  }
+  .kpop.kpop--alarms .alarm-form__desc {
+    height: 44px;
+    border-radius: 11px;
+    font-size: 14px;
+  }
+  .kpop.kpop--alarms .alarm-form__save {
+    height: 44px;
+    border-radius: 11px;
+  }
+  .kpop.kpop--alarms .alarm-time {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 2px 0 0;
+  }
+  .kpop.kpop--alarms .alarm-time__seg {
+    width: 72px;
+    height: 48px;
+    border-radius: 12px;
+    font-family: "Oswald", system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    touch-action: manipulation;
+  }
+  .kpop.kpop--alarms .alarm-time__colon {
+    align-self: center;
+    font-family: "Oswald", system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
   }
 }

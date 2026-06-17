@@ -3950,6 +3950,36 @@ button.account-menu__item:focus-visible {
   color: #f4f5f7;
 }}
 
+.alarm-save-toast {
+  position: fixed;
+  z-index: 10000;
+  left: 50%;
+  bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(18, 18, 22, 0.88);
+  color: #f4f5f7;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  transform: translateX(-50%);
+  pointer-events: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+.alarm-save-toast svg {
+  color: var(--accent);
+  flex: none;
+}
+
 .label-form {
   display: flex;
   flex: 1 1 auto;
