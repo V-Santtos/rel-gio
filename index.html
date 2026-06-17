@@ -23,6 +23,15 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Flux Time</title>
+    <!-- Fundo escuro no primeiro paint: evita flash branco (FOUC) antes do CSS
+         carregar, inclusive na area inferior/safe-area. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        background-color: #101010;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

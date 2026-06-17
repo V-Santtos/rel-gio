@@ -253,7 +253,8 @@ body {
 }
 
 .app {
-  min-height: 100%;
+  min-height: 100vh; /* fallback */
+  min-height: 100dvh; /* acompanha a barra dinamica do iOS (nav cola no fundo) */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1241,7 +1242,8 @@ button.account-menu__item:focus-visible {
 /* ===== Entrada ===== */
 .entry {
   position: relative;
-  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background: #101010;
   color: #f4f5f7;
@@ -1279,7 +1281,8 @@ button.account-menu__item:focus-visible {
 /* ===== Login / cadastro ===== */
 .auth-screen {
   position: relative;
-  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 28px;
