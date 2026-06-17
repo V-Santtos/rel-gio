@@ -1,4 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const STORAGE_KEY = "fluxtime.timer";
+
+function restoreTimerState(plan) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+
+    const planKey = plan.map((c) => `${c.focus}:${c.break}`).join(",");
+    if (s.planKey !== planKey) return null;
+
+    const safeMode = s.mode === "break" ? "break" : "focus";
+    const safeCycle = Math.min(
+      Math.max(parseInt(s.cycle, 10) || 1, 1),
+      plan.length
+    );
+
+    if (s.running && typeof s.anchorTime === "number") {
+      const elapsed = Math.floor((Date.now() - s.anchorTime) / 1000);
+      const rem = (s.anchorRemaining || 0) - elapsed;
+      if (rem <= 0) {
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
+      return { mode: safeMode, cycle: safeCycle, remaining: rem };
+    }
+
+    const rem = parseInt(s.remaining, 10);
+    if (!rem || rem <= 0) return null;
+    return { mode: safeMode, cycle: safeCycle, remaining: rem };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Nucleo do timer Pomodoro com SESSAO de ciclos (Etapa 2).
@@ -11,6 +46,8 @@ import { useCallback, useEffect, useState } from "react";
  *   O Break do ULTIMO ciclo e PULADO (termina no fim do ultimo Foco).
  *   Excecao: com 1 ciclo, mantem Foco -> Break (rodada unica classica).
  * - Reiniciar (reset) volta a sessao inteira para o Foco do ciclo 1.
+ * - Tick usa Date.now() como ancora: imune a throttling de background.
+ * - Estado persiste em localStorage; restaura na proxima abertura.
  */
 export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
   const totalCycles = Math.max(1, plan.length);
@@ -26,10 +63,27 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     [plan]
   );
 
-  const [mode, setMode] = useState("focus");
-  const [cycle, setCycle] = useState(1); // 1-based
-  const [running, setRunning] = useState(false);
-  const [remaining, setRemaining] = useState(() => durationFor("focus", 0));
+  // Restaura estado persistido uma unica vez no mount
+  const initRef = useRef(null);
+  if (initRef.current === null) {
+    initRef.current = restoreTimerState(plan) ?? {
+      mode: "focus",
+      cycle: 1,
+      remaining: Math.max(1, plan[0]?.focus ?? 1),
+    };
+  }
+
+  const [mode, setMode] = useState(initRef.current.mode);
+  const [cycle, setCycle] = useState(initRef.current.cycle);
+  const [running, setRunning] = useState(false); // sempre inicia pausado
+  const [remaining, setRemaining] = useState(initRef.current.remaining);
+
+  // Ancora: { time, rem } — base para calcular tempo real decorrido
+  const anchorRef = useRef({ time: 0, rem: 0 });
+
+  const resetAnchor = (rem) => {
+    anchorRef.current = { time: Date.now(), rem };
+  };
 
   const endSession = useCallback(() => {
     onSessionEnd?.();
@@ -39,9 +93,14 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     setRemaining(durationFor("focus", 0));
   }, [durationFor, onSessionEnd]);
 
-  // Mantem o tempo restante alinhado com a config enquanto nao esta rodando;
-  // clampa o ciclo se a quantidade total diminuir.
+  // Sincroniza remaining com o plano quando pausado.
+  // Ignora o mount para preservar o estado restaurado do localStorage.
+  const skipInitialSync = useRef(true);
   useEffect(() => {
+    if (skipInitialSync.current) {
+      skipInitialSync.current = false;
+      return;
+    }
     if (running) return;
     const safeCycle = cycle > totalCycles ? 1 : cycle;
     if (safeCycle !== cycle) setCycle(safeCycle);
@@ -49,13 +108,36 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, mode, cycle, totalCycles]);
 
-  // Tick de 1s.
+  // Tick: ancora em Date.now() — imune ao throttling do browser em background
   useEffect(() => {
     if (!running) return undefined;
+
+    resetAnchor(remaining);
+
     const id = setInterval(() => {
-      setRemaining((r) => (r <= 1 ? 0 : r - 1));
+      const elapsed = Math.floor((Date.now() - anchorRef.current.time) / 1000);
+      const computed = anchorRef.current.rem - elapsed;
+      setRemaining(computed <= 0 ? 0 : computed);
     }, 1000);
+
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  // Page Visibility: sincroniza imediatamente ao retornar a aba
+  useEffect(() => {
+    if (!running) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const elapsed = Math.floor((Date.now() - anchorRef.current.time) / 1000);
+      const computed = anchorRef.current.rem - elapsed;
+      setRemaining(Math.max(0, computed));
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [running]);
 
   // Fim de um bloco (remaining chegou a 0 rodando) -> proxima fase da sessao.
@@ -63,7 +145,6 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     if (!running || remaining !== 0) return;
 
     if (mode === "focus") {
-      // Faz o Break, exceto no ultimo ciclo de uma sessao multi-ciclo.
       const needBreak = cycle < totalCycles || totalCycles === 1;
       onPhaseEnd?.(mode, {
         cycle,
@@ -73,15 +154,16 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
         willContinue: needBreak,
       });
       if (needBreak) {
+        const newRem = durationFor("break", cycle - 1);
+        resetAnchor(newRem);
         setMode("break");
-        setRemaining(durationFor("break", cycle - 1));
-        return; // encadeia rodando
+        setRemaining(newRem);
+        return;
       }
       endSession();
       return;
     }
 
-    // mode === "break": vai para o Foco do proximo ciclo (se houver).
     if (cycle < totalCycles) {
       const next = cycle + 1;
       onPhaseEnd?.(mode, {
@@ -91,11 +173,14 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
         nextCycle: next,
         willContinue: true,
       });
+      const newRem = durationFor("focus", next - 1);
+      resetAnchor(newRem);
       setCycle(next);
       setMode("focus");
-      setRemaining(durationFor("focus", next - 1));
-      return; // encadeia rodando
+      setRemaining(newRem);
+      return;
     }
+
     onPhaseEnd?.(mode, {
       cycle,
       cycles: totalCycles,
@@ -107,15 +192,45 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining]);
 
+  // Persiste estado pausado (remaining exato)
+  useEffect(() => {
+    if (running) return;
+    const planKey = plan.map((c) => `${c.focus}:${c.break}`).join(",");
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ mode, cycle, running: false, remaining, planKey })
+    );
+  }, [running, mode, cycle, remaining, plan]);
+
+  // Persiste ancora quando rodando (dispara no start e em transicoes de fase)
+  // Deve ser definido APOS o tick effect e o phase-end effect para ler a
+  // ancora ja atualizada por resetAnchor().
+  useEffect(() => {
+    if (!running) return;
+    const planKey = plan.map((c) => `${c.focus}:${c.break}`).join(",");
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        mode,
+        cycle,
+        running: true,
+        planKey,
+        anchorTime: anchorRef.current.time,
+        anchorRemaining: anchorRef.current.rem,
+      })
+    );
+  }, [running, mode, cycle, plan]);
+
   const start = useCallback(() => setRunning(true), []);
   const pause = useCallback(() => setRunning(false), []);
-  // Reiniciar sempre volta para o Foco do ciclo 1 e zera a sessao.
   const reset = useCallback(() => {
     setRunning(false);
     setMode("focus");
     setCycle(1);
     setRemaining(durationFor("focus", 0));
+    localStorage.removeItem(STORAGE_KEY);
   }, [durationFor]);
+
   const switchMode = useCallback(
     (m) => {
       setRunning(false);
