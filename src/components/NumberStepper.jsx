@@ -26,9 +26,10 @@ export default function NumberStepper({ label, value, min, max, onChange }) {
     const el = valueRef.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // force3D:false evita o translateZ (camada 3D) que faz o WebKit/iOS
-    // renderizar o texto do <input> em BRANCO; clearProps remove o transform
-    // inline ao terminar, pra nao deixar o digito preso/sumido no mobile.
+    // Anima o WRAPPER (div), nao o <input>: o WebKit/iOS trata transform direto
+    // em form control de forma bugada (texto sumindo / tremido vertical). Na div
+    // o "pop" escala uniforme, igual no Chromium. force3D:false + clearProps
+    // evitam camada 3D e transform inline preso.
     gsap.fromTo(
       el,
       { scale: 1.16 },
@@ -53,17 +54,18 @@ export default function NumberStepper({ label, value, min, max, onChange }) {
         <ChevronUp size={18} strokeWidth={2.4} />
       </button>
 
-      <input
-        ref={valueRef}
-        className="stepper__value"
-        type="number"
-        inputMode="numeric"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e) => commit(parseInt(e.target.value, 10))}
-        aria-label={label}
-      />
+      <div className="stepper__valuewrap" ref={valueRef}>
+        <input
+          className="stepper__value"
+          type="number"
+          inputMode="numeric"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => commit(parseInt(e.target.value, 10))}
+          aria-label={label}
+        />
+      </div>
 
       <button
         type="button"

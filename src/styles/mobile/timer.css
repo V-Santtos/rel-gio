@@ -305,10 +305,10 @@
   /* Glow do "Iniciar" mais contido no mobile (sombra tingida, sem halo neon). */
   .btn--cta {
     box-shadow: 0 8px 18px -10px var(--accent-glow);
-  }
+  }@media (hover: hover) {
   .btn--cta:hover {
     box-shadow: 0 10px 22px -10px var(--accent-glow);
-  }
+  }}
 }
 
 /* ============================================================

@@ -176,10 +176,10 @@
     border-radius: 11px;
     background: color-mix(in srgb, var(--accent) 7%, transparent);
     color: var(--accent);
-  }
+  }@media (hover: hover) {
   .lane__alarm-item:hover {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-  }
+  }}
   .lane__alarm-item-desc {
     color: color-mix(in srgb, var(--accent) 55%, var(--muted));
   }
@@ -190,13 +190,13 @@
     border: 1px dashed var(--border);
     border-radius: 12px;
     font-size: 13px;
-  }
+  }@media (hover: hover) {
   .lane__addcard:hover {
     background: transparent;
     border-color: var(--border);
     color: var(--muted);
     box-shadow: none;
-  }
+  }}
   .lane__addcard:active {
     transform: scale(0.99);
   }
@@ -219,12 +219,12 @@
   }
   .tarefas-add-lane::after {
     content: "Nova coluna";
-  }
+  }@media (hover: hover) {
   .tarefas-add-lane:hover {
     transform: none;
     color: var(--muted);
     border-color: var(--border);
-  }
+  }}
   .tarefas-add-lane:active {
     transform: scale(0.99);
   }

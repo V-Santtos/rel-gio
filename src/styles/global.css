@@ -240,6 +240,19 @@ html {
      da bottom nav de "subir"/flutuar no launch do standalone. Fix documentado
      no Apple Developer Forums (thread 744327). No desktop o inset e 0 -> no-op. */
   min-height: calc(100% + env(safe-area-inset-top));
+  /* Tira o flash cinza padrao do iOS ao tocar (feedback proprio via :active). */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Feedback de "apertou" SO em telas de toque (onde :hover nao roda): um dim
+   rapido enquanto pressiona, pra nenhum clicavel ficar "morto". So no toque
+   (hover:none) e so durante o toque (:active) — nao gruda nem afeta o desktop. */
+@media (hover: none) {
+  button:active,
+  [role="button"]:active,
+  a:active {
+    opacity: 0.6;
+  }
 }
 
 body {
@@ -430,11 +443,11 @@ body {
   color: var(--dock-icon);
   cursor: pointer;
   transition: color 0.25s ease, transform 0.2s ease;
-}
+}@media (hover: hover) {
 .dock__item:hover:not(.is-active):not(.is-disabled) {
   color: var(--dock-icon-hover);
   transform: scale(1.12);
-}
+}}
 .dock__item.is-active {
   color: var(--dock-icon-active);
 }
@@ -463,10 +476,10 @@ body {
   box-shadow: var(--dock-shadow), inset 0 1px 0 var(--dock-inner-light);
   cursor: pointer;
   transition: color 0.2s ease, opacity 0.4s ease, transform 0.45s ease;
-}
+}@media (hover: hover) {
 .session-logout:hover {
   color: var(--dock-icon-hover);
-}
+}}
 .session-logout:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -546,11 +559,11 @@ body {
 button.account-menu__item {
   cursor: pointer;
   transition: background 0.16s ease, transform 0.16s ease;
-}
+}@media (hover: hover) {
 button.account-menu__item:hover {
   background: var(--hover);
   transform: translateY(-1px);
-}
+}}
 button.account-menu__item:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -664,10 +677,10 @@ button.account-menu__item:focus-visible {
 .focus-settings-trigger.is-active {
   color: var(--fg);
   opacity: 1;
-}
+}@media (hover: hover) {
 .focus-settings-trigger:hover {
   transform: translateY(-1px);
-}
+}}
 .focus-settings-trigger:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -767,10 +780,10 @@ button.account-menu__item:focus-visible {
 /* "Configurações" segue o padrão ghost dos controles; gira a engrenagem no hover */
 .focus-config svg {
   transition: transform 0.4s ease;
-}
+}@media (hover: hover) {
 .focus-config:hover svg {
   transform: rotate(60deg);
-}
+}}
 /* Modal central de configuracoes da sessao (ciclos) */
 .sessmodal {
   position: fixed;
@@ -828,11 +841,11 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .sessmodal__close:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .sessmodal__close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1073,10 +1086,10 @@ button.account-menu__item:focus-visible {
   background: var(--accent-grad);
   color: var(--accent-fg);
   box-shadow: 0 10px 28px -8px var(--accent-glow);
-}
+}@media (hover: hover) {
 .btn--cta:hover {
   box-shadow: 0 14px 34px -8px var(--accent-glow);
-}
+}}
 .btn--cta .btn__label {
   transition: opacity 0.45s ease;
 }
@@ -1091,29 +1104,29 @@ button.account-menu__item:focus-visible {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
   transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-}
+}@media (hover: hover) {
 .btn--cta:hover .btn__label {
   opacity: 0;
-}
+}}@media (hover: hover) {
 .btn--cta:hover .btn__icon {
   width: calc(100% - 10px);
-}
+}}
 
 /* Ghost (estilo motion): contorno + icone com leve giro no hover */
 .btn--ghost {
   background: transparent;
   color: var(--fg);
   border: 1px solid var(--border);
-}
+}@media (hover: hover) {
 .btn--ghost:hover {
   background: var(--hover);
-}
+}}
 .btn--ghost svg {
   transition: transform 0.35s ease;
-}
+}@media (hover: hover) {
 .btn--ghost:hover svg {
   transform: rotate(-45deg);
-}
+}}
 
 /* Botao so com icone (balao) — usado no cronometro */
 .btn--icon {
@@ -1190,17 +1203,21 @@ button.account-menu__item:focus-visible {
 }
 /* :hover so em dispositivos com ponteiro real (mouse). No toque (iOS) o :hover
    GRUDA depois do tap e deixava a seta presa no destaque vermelho. */
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) {@media (hover: hover) {
   .stepper__btn:hover {
     color: var(--accent);
     background: var(--hover);
-  }
+  }}@media (hover: hover) {
   .stepper__btn:hover svg {
     transform: scale(1.18);
-  }
+  }}
 }
+/* Feedback de "apertou" no toque E no mouse (vale onde :hover nao roda, ex.
+   iOS): pinta de vermelho enquanto pressionado. Some sozinho ao soltar. */
 .stepper__btn:active {
   transform: scale(0.9);
+  color: var(--accent);
+  background: var(--hover);
 }
 .stepper__btn:active svg {
   transform: scale(1);
@@ -1208,10 +1225,15 @@ button.account-menu__item:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .stepper__btn svg {
     transition: none;
-  }
+  }@media (hover: hover) {
   .stepper__btn:hover svg {
     transform: none;
-  }
+  }}
+}
+/* Wrapper do numero: e ELE que recebe o "pop" (GSAP), nunca o <input> direto
+   (transform em form control buga no WebKit). Encolhe no tamanho do input. */
+.stepper__valuewrap {
+  display: inline-flex;
 }
 .stepper__value {
   width: 64px;
@@ -1430,10 +1452,10 @@ button.account-menu__item:focus-visible {
   color: #8a8f98;
   cursor: pointer;
   transition: color 0.16s ease;
-}
+}@media (hover: hover) {
 .auth-field__toggle:hover {
   color: #f4f5f7;
-}
+}}
 .auth-options {
   display: flex;
   align-items: center;
@@ -1509,10 +1531,10 @@ button.account-menu__item:focus-visible {
   border-bottom: none;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
+}@media (hover: hover) {
 .auth-resend:hover {
   color: #ffaaa5;
-}
+}}
 .auth-resend:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -1535,11 +1557,11 @@ button.account-menu__item:focus-visible {
   gap: 9px;
   box-shadow: 0 14px 30px -10px rgba(236, 91, 83, 0.55);
   transition: filter 0.16s ease, transform 0.16s ease;
-}
+}@media (hover: hover) {
 .auth-submit:hover {
   filter: brightness(1.06);
   transform: translateY(-1px);
-}
+}}
 .auth-submit:disabled {
   cursor: wait;
   filter: grayscale(0.25) brightness(0.9);
@@ -1776,12 +1798,12 @@ button.account-menu__item:focus-visible {
   box-shadow: var(--lane-shadow);
   cursor: pointer;
   transition: color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
-}
+}@media (hover: hover) {
 .tarefas-add-lane:hover {
   color: var(--fg);
   border-color: var(--accent);
   transform: translateY(-1px);
-}
+}}
 .tarefas-add-lane:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1830,13 +1852,13 @@ button.account-menu__item:focus-visible {
 }
 .lane__grip:active {
   cursor: grabbing;
-}
+}@media (hover: hover) {
 .lane__grip:hover,
 .lane__collapse:hover,
 .lane__menu:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .lane__chevron {
   display: inline-flex;
 }
@@ -1857,20 +1879,20 @@ button.account-menu__item:focus-visible {
   text-overflow: ellipsis;
   cursor: text;
   transition: background-color 0.15s ease;
-}
+}@media (hover: hover) {
 .lane__title:hover {
   background: var(--hover);
-}
+}}
 .lane__title:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 .lane__title.is-locked {
   cursor: default;
-}
+}@media (hover: hover) {
 .lane__title.is-locked:hover {
   background: transparent;
-}
+}}
 
 .lane__title-input {
   flex: 1;
@@ -1939,10 +1961,10 @@ button.account-menu__item:focus-visible {
   text-align: left;
   cursor: pointer;
   transition: background-color 0.15s ease;
-}
+}@media (hover: hover) {
 .lane__alarm-item:hover {
   background: var(--hover);
-}
+}}
 .lane__alarm-item.is-off {
   opacity: 0.45;
 }
@@ -2088,10 +2110,10 @@ button.account-menu__item:focus-visible {
   background: transparent;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
-}
+}@media (hover: hover) {
 .kcheck:hover {
   border-color: var(--accent);
-}
+}}
 .kcheck.is-checked {
   background: var(--accent);
   border-color: var(--accent);
@@ -2129,13 +2151,13 @@ button.account-menu__item:focus-visible {
   cursor: pointer;
   transition: background-color 0.16s ease, color 0.16s ease,
     border-color 0.16s ease, box-shadow 0.16s ease;
-}
+}@media (hover: hover) {
 .lane__addcard:hover {
   background: var(--accent-grad);
   border-color: transparent;
   color: var(--accent-fg);
   box-shadow: 0 8px 20px -8px var(--accent-glow);
-}
+}}
 
 .lane__composer {
   display: flex;
@@ -2191,11 +2213,11 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .lane__close:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 
 /* ===== Card modal (detalhe do cartão — ref. card-back do Trello) ===== */
 .cardmodal {
@@ -2303,11 +2325,11 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__close:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 
 .cardmodal__title-row {
   display: flex;
@@ -2336,10 +2358,10 @@ button.account-menu__item:focus-visible {
   text-wrap: balance;
   color: var(--fg);
   transition: background-color 0.15s ease, border-color 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__title:hover {
   background: var(--hover);
-}
+}}
 .cardmodal__title:focus {
   outline: none;
   background: var(--field-bg);
@@ -2378,10 +2400,10 @@ button.account-menu__item:focus-visible {
   box-shadow: var(--field-inset);
   cursor: text;
   transition: border-color 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__desc-read:hover {
   border-color: var(--accent);
-}
+}}
 .cardmodal__desc-read:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -2399,10 +2421,10 @@ button.account-menu__item:focus-visible {
   text-align: left;
   cursor: text;
   transition: border-color 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__desc-empty:hover {
   border-color: var(--accent);
-}
+}}
 
 /* Checklist no modal */
 .checklist {
@@ -2441,11 +2463,11 @@ button.account-menu__item:focus-visible {
   font-size: 13.5px;
   font-weight: 650;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .checklist__delete:hover {
   border-color: var(--accent);
   background: var(--hover);
-}
+}}
 .checklist__progress {
   display: grid;
   grid-template-columns: 34px 1fr;
@@ -2528,11 +2550,11 @@ button.account-menu__item:focus-visible {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-}
+}@media (hover: hover) {
 .checkitem__remove:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .checklist__add-placeholder {
   width: fit-content;
   height: 34px;
@@ -2545,11 +2567,11 @@ button.account-menu__item:focus-visible {
   font-size: 14px;
   font-weight: 650;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .checklist__add-placeholder:hover {
   border-color: var(--accent);
   color: var(--fg);
-}
+}}
 .checklist__composer {
   display: flex;
   flex-direction: column;
@@ -2589,10 +2611,10 @@ button.account-menu__item:focus-visible {
   font-weight: 750;
   cursor: pointer;
   transition: background-color 0.15s ease;
-}
+}@media (hover: hover) {
 .checklist__add:hover {
   background: var(--btn-neutral-hover);
-}
+}}
 .checklist__cancel,
 .checklist__meta {
   display: inline-flex;
@@ -2608,12 +2630,12 @@ button.account-menu__item:focus-visible {
   font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .checklist__cancel:hover,
 .checklist__meta:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .checklist__date {
   margin-left: auto;
 }
@@ -2712,10 +2734,10 @@ button.account-menu__item:focus-visible {
   font-weight: 650;
   cursor: pointer;
   transition: background-color 0.12s ease;
-}
+}@media (hover: hover) {
 .month-opt:hover {
   background: var(--hover);
-}
+}}
 .month-opt.is-active {
   background: var(--hover);
   color: var(--accent);
@@ -2737,10 +2759,10 @@ button.account-menu__item:focus-visible {
 .checklist__date-save:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
+}@media (hover: hover) {
 .checklist__date-save:not(:disabled):hover {
   background: var(--btn-neutral-hover);
-}
+}}
 
 /* Markdown renderizado */
 .md-rendered {
@@ -2860,10 +2882,10 @@ button.account-menu__item:focus-visible {
   color: var(--fg);
   cursor: pointer;
   transition: background-color 0.15s ease;
-}
+}@media (hover: hover) {
 .mde__btn:hover {
   background: var(--hover);
-}
+}}
 .mde__btn.is-active {
   background: var(--hover);
   color: var(--accent);
@@ -2912,10 +2934,10 @@ button.account-menu__item:focus-visible {
   font-weight: 700;
   text-align: left;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .mde__heading-menu button:hover {
   background: var(--hover);
-}
+}}
 .mde__heading-sample {
   color: var(--muted);
   font-family: "Oswald", system-ui, sans-serif;
@@ -3208,11 +3230,11 @@ button.account-menu__item:focus-visible {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .mde__cancel:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 
 .cardmodal__foot {
   display: flex;
@@ -3240,11 +3262,11 @@ button.account-menu__item:focus-visible {
 }
 .cardmodal__save svg {
   color: #fff;
-}
+}@media (hover: hover) {
 .cardmodal__save:hover {
   filter: brightness(1.08);
   box-shadow: 0 6px 18px rgba(236, 91, 83, 0.32);
-}
+}}
 .cardmodal__save:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -3258,11 +3280,11 @@ button.account-menu__item:focus-visible {
 }
 .cardmodal__save.is-disabled svg {
   color: var(--muted);
-}
+}@media (hover: hover) {
 .cardmodal__save.is-disabled:hover {
   filter: none;
   box-shadow: none;
-}
+}}
 .cardmodal__delete {
   display: inline-flex;
   align-items: center;
@@ -3278,12 +3300,12 @@ button.account-menu__item:focus-visible {
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease,
     border-color 0.15s ease, box-shadow 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__delete:hover {
   background: rgba(236, 91, 83, 0.1);
   border-color: rgba(236, 91, 83, 0.45);
   color: var(--accent);
-}
+}}
 .cardmodal__delete:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -3407,12 +3429,12 @@ button.account-menu__item:focus-visible {
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease,
     border-color 0.15s ease;
-}
+}@media (hover: hover) {
 .cardmodal__label-add:hover {
   background: var(--hover);
   color: var(--fg);
   border-color: var(--accent);
-}
+}}
 
 /* ===== Popover (etiquetas, e futuros menus) ===== */
 .kpop {
@@ -3460,11 +3482,11 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .kpop__close:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .kpop__back {
   grid-column: 1;
   grid-row: 1;
@@ -3482,11 +3504,11 @@ button.account-menu__item:focus-visible {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-}
+}@media (hover: hover) {
 .kpop__back:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .kpop__back:focus-visible,
 .kpop__close:focus-visible {
   outline: 2px solid var(--accent);
@@ -3577,11 +3599,11 @@ button.account-menu__item:focus-visible {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-}
+}@media (hover: hover) {
 .kpop__edit:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .kpop__create-label {
   display: inline-flex;
   align-items: center;
@@ -3597,11 +3619,11 @@ button.account-menu__item:focus-visible {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .kpop__create-label:hover {
   background: var(--hover);
   border-color: var(--accent);
-}
+}}
 
 /* ===== Alarmes do dia: sininho no header da coluna ===== */
 .lane__alarm {
@@ -3618,11 +3640,11 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
+}@media (hover: hover) {
 .lane__alarm:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .lane__alarm:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -3676,10 +3698,10 @@ button.account-menu__item:focus-visible {
   color: var(--fg);
   text-align: left;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .alarm-row__main:hover {
   background: var(--hover);
-}
+}}
 .alarm-row__time {
   font-size: 14px;
   font-weight: 800;
@@ -3708,15 +3730,15 @@ button.account-menu__item:focus-visible {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-}
+}@media (hover: hover) {
 .alarm-row__edit:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}@media (hover: hover) {
 .alarm-row__delete:hover {
   background: var(--hover);
   color: var(--accent);
-}
+}}
 .alarm-empty {
   display: flex;
   align-items: center;
@@ -3820,10 +3842,10 @@ button.account-menu__item:focus-visible {
   font-weight: 800;
   cursor: pointer;
   transition: filter 0.15s ease, opacity 0.15s ease;
-}
+}@media (hover: hover) {
 .alarm-form__save:hover {
   filter: brightness(1.06);
-}
+}}
 .alarm-form__save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -3916,11 +3938,11 @@ button.account-menu__item:focus-visible {
   color: rgba(244, 245, 247, 0.4);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-}
+}@media (hover: hover) {
 .alarm-toast__close:hover {
   background: rgba(255, 255, 255, 0.15);
   color: #f4f5f7;
-}
+}}
 
 .label-form {
   display: flex;
@@ -3994,11 +4016,11 @@ button.account-menu__item:focus-visible {
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
-}
+}@media (hover: hover) {
 .label-form__remove:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 .label-form__foot {
   position: sticky;
   bottom: 0;
@@ -4023,10 +4045,10 @@ button.account-menu__item:focus-visible {
   font-weight: 750;
   cursor: pointer;
   transition: background-color 0.15s ease;
-}
+}@media (hover: hover) {
 .label-form__create:hover {
   background: var(--btn-neutral-hover);
-}
+}}
 
 /* Menu (popover de acoes — ex.: opcoes da lista) */
 .kpop--menu {
@@ -4057,19 +4079,19 @@ button.account-menu__item:focus-visible {
 .kmenu__item svg {
   flex: none;
   color: var(--muted);
-}
+}@media (hover: hover) {
 .kmenu__item:hover {
   background: var(--hover);
-}
+}}
 .kmenu__item--danger {
   color: #ff9c96;
 }
 .kmenu__item--danger svg {
   color: #ff9c96;
-}
+}@media (hover: hover) {
 .kmenu__item--danger:hover {
   background: rgba(236, 91, 83, 0.12);
-}
+}}
 .kmenu__item:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -4149,22 +4171,22 @@ button.account-menu__item:focus-visible {
   background: var(--accent-grad);
   color: var(--accent-fg);
   box-shadow: 0 4px 12px var(--accent-glow);
-}
+}@media (hover: hover) {
 
 .notif-guide-btn--primary:hover {
   opacity: 0.88;
-}
+}}
 
 .notif-guide-btn--ghost {
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
-}
+}@media (hover: hover) {
 
 .notif-guide-btn--ghost:hover {
   background: var(--hover);
   color: var(--fg);
-}
+}}
 
 /* Seta do popover */
 .notif-guide .driver-popover-arrow {
@@ -4240,11 +4262,11 @@ button.account-menu__item:focus-visible {
   border: none;
   cursor: pointer;
   transition: opacity 0.15s ease;
-}
+}@media (hover: hover) {
 
 .week-guide__btn:hover {
   opacity: 0.88;
-}
+}}
 
 .week-guide__btn + .week-guide__btn {
   margin-top: 6px;
@@ -4255,13 +4277,13 @@ button.account-menu__item:focus-visible {
   color: var(--muted);
   border: 1px solid var(--border);
   box-shadow: none;
-}
+}@media (hover: hover) {
 
 .week-guide__btn--ghost:hover {
   background: var(--hover);
   color: var(--fg);
   opacity: 1;
-}
+}}
 
 /* ============================================================
    Mobile — estilos isolados (desktop acima nao e tocado).
