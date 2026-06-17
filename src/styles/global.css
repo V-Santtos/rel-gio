@@ -231,6 +231,11 @@ body,
 #root {
   height: 100%;
 }
+/* Fundo escuro tambem no html: evita "borda branca" no overscroll/rubber-band
+   (iOS) e nas safe-areas quando o body nao alcanca as pontas. */
+html {
+  background-color: var(--bg);
+}
 
 body {
   margin: 0;
