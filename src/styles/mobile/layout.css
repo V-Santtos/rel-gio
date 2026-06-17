@@ -27,6 +27,8 @@
     gap: clamp(16px, 3vh, 28px);
     padding: clamp(16px, 4.5vw, 28px);
     padding-top: max(clamp(16px, 4.5vw, 28px), env(safe-area-inset-top));
+    /* Rede de seguranca: nenhum estouro horizontal vira scroll/pan no mobile. */
+    overflow-x: hidden;
   }
 
   /* Conta/config vira um HAMBURGUER no topo (canto superior direito), em vez

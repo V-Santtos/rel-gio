@@ -265,7 +265,25 @@
   }
   .focus-actions {
     flex: 0 0 auto;
+    width: 100%;
     margin-bottom: clamp(18px, 4vh, 40px);
+  }
+  /* Linha Iniciar/Pausar + Reiniciar NAO pode estourar a largura (gerava scroll
+     horizontal + pan no iOS). O CTA cresce no espaco livre; o Reiniciar ocupa so
+     o conteudo. min-width:0 deixa o CTA encolher abaixo dos 176px. */
+  .controls {
+    width: 100%;
+    gap: 10px;
+  }
+  .controls .btn {
+    padding: 0 18px;
+  }
+  .controls .btn--cta {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .controls .btn--ghost {
+    flex: 0 0 auto;
   }
   .content {
     gap: clamp(14px, 2.6vh, 26px);

@@ -1,4 +1,12 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
+
+// Sem isto, o SW novo fica "esperando" e o antigo continua servindo o cache
+// velho -> as mudancas so apareciam ao fechar todas as instancias do app.
+// skipWaiting + clientsClaim fazem o SW novo assumir na hora; com
+// registerType:"autoUpdate" a pagina recarrega sozinha na versao nova.
+self.skipWaiting();
+clientsClaim();
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
