@@ -1,13 +1,16 @@
 import gsap from "gsap";
 
-export default function MobileNav({ items, active, onChange }) {
+export default function MobileNav({ items, active, onChange, hidden = false }) {
   function handleTap(el) {
     if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     gsap.fromTo(el, { scale: 0.88 }, { scale: 1, duration: 0.32, ease: "back.out(2.2)" });
   }
 
   return (
-    <nav className="mobile-nav" aria-label="Modos">
+    <nav
+      className={`mobile-nav${hidden ? " mobile-nav--hidden" : ""}`}
+      aria-label="Modos"
+    >
       <div className="mobile-nav__items">
         {items.map(({ id, label, Icon, center }) => {
           const isActive = active === id;

@@ -168,32 +168,6 @@ function PhaseTimerDisplay({ timer, showHours, expanded, onToggleExpand, clockRe
     }
   }, [timer.mode, timer.remaining]);
 
-  // iOS/PWA: o CSS (100dvh, env(safe-area-*)) e a ancoragem de position:fixed
-  // por bottom:0 nascem ERRADOS no primeiro paint do standalone e so corrigem
-  // apos um scroll manual (por isso "arrastar conserta"). Ja o window.innerHeight
-  // (JS) e confiavel desde o launch. Entao medimos a altura real da viewport e
-  // expomos em --app-h; a bottom nav e ancorada por top:0 + height:var(--app-h)
-  // (ver nav.css), nascendo no lugar certo sem depender do bottom:0/dvh.
-  useEffect(() => {
-    const root = document.documentElement;
-    const setAppH = () => {
-      root.style.setProperty("--app-h", `${window.innerHeight}px`);
-    };
-    setAppH();
-    const raf = requestAnimationFrame(setAppH);
-    window.addEventListener("resize", setAppH);
-    window.addEventListener("orientationchange", setAppH);
-    window.addEventListener("pageshow", setAppH);
-    window.visualViewport?.addEventListener("resize", setAppH);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", setAppH);
-      window.removeEventListener("orientationchange", setAppH);
-      window.removeEventListener("pageshow", setAppH);
-      window.visualViewport?.removeEventListener("resize", setAppH);
-    };
-  }, []);
-
   useLayoutEffect(() => {
     const focusLayer = focusLayerRef.current;
     const breakLayer = breakLayerRef.current;
@@ -1812,7 +1786,6 @@ function TimerApp({ session, onLogout, entered }) {
       }${focoExpanded ? " is-expanded" : ""}`}
     >
       <Sidebar items={SIDEBAR_ITEMS} active={section} onChange={setSection} />
-      <MobileNav items={MOBILE_NAV_ITEMS} active={section} onChange={setSection} />
 
       <AccountMenu session={session} onLogout={onLogout} />
 
@@ -1839,6 +1812,17 @@ function TimerApp({ session, onLogout, entered }) {
       </div>
 
     </div>
+
+    {/* Fora do .app de proposito: isolada dos recalculos de layout do container
+        (overflow/flex/min-height), que no iOS PWA faziam o position:fixed
+        "andar junto" e flutuar no launch. Visibilidade no modo Foco vem por
+        prop, nao por seletor de ancestral. */}
+    <MobileNav
+      items={MOBILE_NAV_ITEMS}
+      active={section}
+      onChange={setSection}
+      hidden={isRunning || focoExpanded}
+    />
 
     {alarmToast && (
       <AlarmToast

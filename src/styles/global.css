@@ -235,6 +235,11 @@ body,
    (iOS) e nas safe-areas quando o body nao alcanca as pontas. */
 html {
   background-color: var(--bg);
+  /* iOS PWA: deixa a pagina LEVEMENTE mais alta que o viewport (sempre
+     rolavel), o que estabiliza o calculo do viewport e impede o position:fixed
+     da bottom nav de "subir"/flutuar no launch do standalone. Fix documentado
+     no Apple Developer Forums (thread 744327). No desktop o inset e 0 -> no-op. */
+  min-height: calc(100% + env(safe-area-inset-top));
 }
 
 body {

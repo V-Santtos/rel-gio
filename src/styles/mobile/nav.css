@@ -13,22 +13,19 @@
     display: none;
   }
 
-  /* Wrapper fixo ancorado no TOPO da viewport (top:0 + height:var(--app-h)) em
-     vez de bottom:0. Motivo: no launch do PWA/iOS, bottom:0 + 100dvh nascem
-     errados e a barra flutua ate um scroll manual; top:0 e a altura medida via
-     JS (--app-h = window.innerHeight) nascem corretos. O wrapper ocupa a tela
-     toda (transparente, pointer-events:none) e empurra a barra pro fundo real
-     com justify-content:flex-end. O espaco vazio acima deixa o FAB vazar. */
+  /* Wrapper fixo. Padding-top dá folga pro círculo do FAB vazar acima.
+     A nav e renderizada FORA do .app (irma, filha da raiz) pra ficar isolada
+     dos recalculos de layout do container no iOS PWA — junto com o
+     html{min-height:calc(100%+safe-area-inset-top)} do global.css (mantem a
+     pagina rolavel e o viewport estavel), corrige o fixed flutuando no launch. */
   .mobile-nav {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
+    display: block;
     position: fixed;
     left: 0;
     right: 0;
-    top: 0;
-    height: var(--app-h, 100dvh);
+    bottom: 0;
     z-index: 40;
+    padding: 28px 0 0;
     pointer-events: none;
     transition: opacity 0.4s ease, transform 0.45s ease;
   }
@@ -145,9 +142,9 @@
     filter: brightness(1.08);
   }
 
-  /* Some no modo foco e em tela cheia */
-  .app.is-running .mobile-nav,
-  .app.is-expanded .mobile-nav {
+  /* Some no modo foco e em tela cheia (prop hidden -> classe, ja que a nav
+     nao e mais descendente do .app). */
+  .mobile-nav--hidden {
     opacity: 0;
     transform: translateY(140%);
     pointer-events: none;
