@@ -598,6 +598,7 @@ export default function DayLane({
     const primaryLabel = cardLabels.length === 1 ? cardLabels[0] : null;
     const hasLabelBars = cardLabels.length > 1;
     const stats = checklistStats(card);
+    const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
 
     return (
       <article
@@ -635,10 +636,14 @@ export default function DayLane({
         </div>
         {stats.total ? (
           <div className="kcard__meta">
-            <CheckSquare size={14} strokeWidth={2.2} />
-            <span>
+            <CheckSquare className="kcard__meta-icon" size={14} strokeWidth={2.2} />
+            <span className="kcard__meta-count">
               {stats.done}/{stats.total}
             </span>
+            <span className="kcard__progress" aria-hidden="true">
+              <span className="kcard__progress-fill" style={{ width: `${pct}%` }} />
+            </span>
+            <span className="kcard__pct">{pct}%</span>
           </div>
         ) : null}
         {hasLabelBars ? (
@@ -812,6 +817,11 @@ export default function DayLane({
             {name}
           </h2>
         )}
+        {collapsed ? (
+          <span className="lane__count">
+            {cards.length} {cards.length === 1 ? "item" : "itens"}
+          </span>
+        ) : null}
         {weekMode ? (
           <button
             type="button"

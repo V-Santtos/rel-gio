@@ -16,7 +16,7 @@
      do gear flutuante embaixo (que colidia com a bottom nav). O painel passa
      a abrir pra BAIXO (flex-direction normal + origem no topo). */
   .account-menu {
-    top: max(14px, env(safe-area-inset-top));
+    top: max(20px, calc(env(safe-area-inset-top) + 12px));
     left: clamp(14px, 4vw, 20px);
     right: auto;
     bottom: auto;

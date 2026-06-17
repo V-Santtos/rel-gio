@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Logo from "./Logo.jsx";
-import { BGPattern } from "./bg-pattern.jsx";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
 
 const REMEMBER_EMAIL_KEY = "flux-time:remember-email";
@@ -290,18 +289,13 @@ export default function AuthPanel({ recoveryMode = false, onComplete, onPassword
 
   return (
     <main className="auth-screen" aria-label="Acesso ao Flux Time">
-      <BGPattern
-        variant="dots"
-        mask="fade-center"
-        size={24}
-        fill="#2b2b2b"
-        className="z-0 pointer-events-none"
-      />
-
       <section className="auth-card">
         <header className="auth-card__header">
-          <Logo size={34} className="auth-card__logo" />
-          <span className="auth-card__name">Flux Time</span>
+          <div className="auth-card__icon">
+            <Logo size={34} />
+          </div>
+          <span className="auth-card__name">FLUX TIME</span>
+          <span className="auth-card__tagline">Foco, pausas e tarefas no seu ritmo.</span>
         </header>
 
         {!isRecoverUpdate ? (
@@ -456,6 +450,12 @@ export default function AuthPanel({ recoveryMode = false, onComplete, onPassword
                   : isLogin
                     ? "Acessar"
                     : "Criar conta"}
+            {!submitting && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" aria-hidden="true">
+                <path d="M5 12h14"/>
+                <path d="m13 6 6 6-6 6"/>
+              </svg>
+            )}
           </button>
         </form>
       </section>

@@ -279,3 +279,34 @@
     box-shadow: 0 10px 22px -10px var(--accent-glow);
   }
 }
+
+/* ============================================================
+   Foco em TELA CHEIA — claquetes por orientacao (so .is-expanded)
+   So o fullscreen muda de tamanho/eixo ao girar; a tela normal do
+   Foco nao e afetada. Override apenas do --fit (e da direcao no
+   landscape) — o restante (unit-w/h/font/gap) deriva no global.
+   ============================================================ */
+
+/* Retrato: claquetes EMPILHADOS, crescem pra preencher a vertical (antes
+   ficavam presos no 40vw e sobrava tela). So no celular. */
+@media (max-width: 768px) and (orientation: portrait) {
+  .app.is-expanded .flip-clock {
+    --fit: min(86vw, 42vh);
+  }
+  .app.is-expanded .flip-clock--hours {
+    --fit: min(70vw, 28vh);
+  }
+}
+
+/* Paisagem (celular deitado, viewport baixa): claquetes LADO A LADO preenchendo
+   a tela. So no fullscreen — o .is-expanded ja escondeu nav/controles/menu.
+   max-height pega o celular deitado sem afetar monitores de desktop. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .app.is-expanded .flip-clock {
+    flex-direction: row;
+    --fit: min(44vw, 82vh);
+  }
+  .app.is-expanded .flip-clock--hours {
+    --fit: min(30vw, 82vh);
+  }
+}

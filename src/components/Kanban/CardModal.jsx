@@ -40,6 +40,12 @@ const dueDateParts = (value) => {
   return { day: day || "", month: month || "" };
 };
 
+// "YYYY-MM-DD" -> "DD/MM" (ano omitido; é sempre o ano atual).
+const dueMaskFromDate = (value) => {
+  const { day, month } = dueDateParts(value);
+  return day && month ? `${day}/${month}` : "";
+};
+
 const cleanDuePart = (value) => value.replace(/\D/g, "").slice(0, 2);
 
 const buildDueDate = ({ day, month }) => {
@@ -158,6 +164,8 @@ export default function CardModal({
   const [availableLabels, setAvailableLabels] = useState(() => labelCatalog || getLabels());
   const [duePickerListId, setDuePickerListId] = useState(null);
   const [dueTextByList, setDueTextByList] = useState({});
+  // Mobile: texto cru "dd/mm" digitado no campo (mascara local enquanto digita).
+  const [dueMaskByList, setDueMaskByList] = useState({});
   const [monthOpen, setMonthOpen] = useState(false);
   const [dragLabelId, setDragLabelId] = useState(null);
 
@@ -307,6 +315,23 @@ export default function CardModal({
     setDueTextByList((state) => ({ ...state, [list.id]: next }));
   };
 
+  // Mobile: campo dd/mm digitado. Insere a "/" sozinho, e quando dia+mes estao
+  // completos monta a data com o ano atual (buildDueDate). Incompleto/invalido
+  // limpa o draftDueDate, mas o texto digitado permanece visivel.
+  const onDueMaskChange = (list, raw) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    const masked =
+      digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+    setDueMaskByList((current) => ({ ...current, [list.id]: masked }));
+    const day = digits.slice(0, 2);
+    const month = digits.slice(2, 4);
+    const date =
+      day.length === 2 && month.length === 2
+        ? buildDueDate({ day, month })
+        : "";
+    patchChecklist(list.id, { draftDueDate: date });
+  };
+
   const saveDraftDueDate = (list) => {
     const nextDate = buildDueDate(dueTextByList[list.id] || dueDateParts(list.draftDueDate));
     if (!nextDate) return;
@@ -317,6 +342,11 @@ export default function CardModal({
 
   const reduce = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // No mobile o painel vira bottom sheet (sobe de baixo); no desktop continua
+  // o pop centralizado. A geometria (posicao/cantos) fica no CSS; aqui so o
+  // movimento GSAP muda de eixo.
+  const isSheet = () =>
+    window.matchMedia("(max-width: 768px)").matches;
 
   const autoGrow = (el) => {
     if (!el) return;
@@ -327,20 +357,25 @@ export default function CardModal({
   // Entrada (GSAP) + foco inicial no painel.
   useLayoutEffect(() => {
     const r = reduce();
+    const sheet = isSheet();
     gsap.set(backdropRef.current, { opacity: 0 });
-    gsap.set(panelRef.current, { opacity: 0, y: 16, scale: 0.97 });
+    gsap.set(
+      panelRef.current,
+      sheet
+        ? { opacity: 1, yPercent: 100, scale: 1 }
+        : { opacity: 0, y: 16, scale: 0.97 }
+    );
     gsap.to(backdropRef.current, {
       opacity: 1,
       duration: r ? 0 : 0.25,
       ease: "power2.out",
     });
-    gsap.to(panelRef.current, {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      duration: r ? 0 : 0.34,
-      ease: "power3.out",
-    });
+    gsap.to(
+      panelRef.current,
+      sheet
+        ? { yPercent: 0, duration: r ? 0 : 0.42, ease: "power3.out" }
+        : { opacity: 1, y: 0, scale: 1, duration: r ? 0 : 0.34, ease: "power3.out" }
+    );
     autoGrow(titleRef.current);
     panelRef.current?.focus({ preventScroll: true });
   }, []);
@@ -368,17 +403,17 @@ export default function CardModal({
     if (closingRef.current) return;
     closingRef.current = true;
     const r = reduce();
+    const sheet = isSheet();
     gsap.killTweensOf([backdropRef.current, panelRef.current]);
-    gsap.to(panelRef.current, {
-      opacity: 0,
-      y: 12,
-      scale: 0.97,
-      duration: r ? 0 : 0.2,
-      ease: "power2.in",
-    });
+    gsap.to(
+      panelRef.current,
+      sheet
+        ? { yPercent: 100, duration: r ? 0 : 0.3, ease: "power3.in" }
+        : { opacity: 0, y: 12, scale: 0.97, duration: r ? 0 : 0.2, ease: "power2.in" }
+    );
     gsap.to(backdropRef.current, {
       opacity: 0,
-      duration: r ? 0 : 0.22,
+      duration: r ? 0 : sheet ? 0.3 : 0.22,
       ease: "power2.in",
       onComplete: onClose,
     });
@@ -609,11 +644,8 @@ export default function CardModal({
           {descEditing ? (
             <MarkdownEditor
               value={draft.description || ""}
-              onSave={(v) => {
-                patch({ description: v });
-                setDescEditing(false);
-              }}
-              onCancel={() => setDescEditing(false)}
+              onChange={(v) => patch({ description: v })}
+              onBlur={() => setDescEditing(false)}
             />
           ) : draft.description ? (
             <div
@@ -779,6 +811,18 @@ export default function CardModal({
                       <Clock size={15} strokeWidth={2.2} />
                       <span>{formatDueDate(list.draftDueDate)}</span>
                     </button>
+                    {/* Mobile: digitacao manual dd/mm (teclado numerico). O ano
+                        e automatico. Substitui o seletor custom acima via CSS. */}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="checklist__date-native"
+                      placeholder="dd/mm"
+                      maxLength={5}
+                      value={dueMaskByList[list.id] ?? dueMaskFromDate(list.draftDueDate)}
+                      aria-label="Data de entrega (dia/mês)"
+                      onChange={(event) => onDueMaskChange(list, event.target.value)}
+                    />
                   </div>
                   {duePickerListId === list.id ? (
                     <div className="checklist__date-panel">

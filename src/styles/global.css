@@ -1271,36 +1271,18 @@ button.account-menu__item:focus-visible {
   inset: 0;
 }
 
-/* ===== Login / cadastro placeholder ===== */
+/* ===== Login / cadastro ===== */
 .auth-screen {
   position: relative;
   min-height: 100%;
   display: grid;
   place-items: center;
-  padding: clamp(20px, 5vw, 48px);
-  background:
-    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.035), transparent 34%),
-    #101010;
+  padding: 28px;
+  background: #101010;
   color: #f4f5f7;
-  overflow: hidden;
-}
-/* glow ambiente atras do card: lift de luz sem sombra pesada */
-.auth-screen::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  width: min(560px, 90vw);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(236, 91, 83, 0.055), transparent 64%);
-  filter: blur(8px);
-  pointer-events: none;
 }
 .auth-screen--boot {
   background: #101010;
-}
-.auth-screen--boot::after {
-  display: none;
 }
 .auth-screen--boot .sync-status {
   opacity: 0;
@@ -1309,32 +1291,38 @@ button.account-menu__item:focus-visible {
   position: relative;
   z-index: 1;
   width: min(390px, 100%);
-  padding: 28px;
-  border-radius: 28px;
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.075), rgba(28, 28, 30, 0.64) 40%, rgba(18, 18, 18, 0.96)),
-    #171718;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  /* rim light no topo + sombra suave em vez de preto-no-preto */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 24px 64px -42px rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
 }
 .auth-card__header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 28px;
+  gap: 13px;
+  margin-bottom: 34px;
 }
-.auth-card__logo {
+.auth-card__icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #222227 0%, #141417 100%);
+  box-shadow: 0 16px 36px -16px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
   color: #f4f5f7;
 }
 .auth-card__name {
-  font-family: "Oswald", system-ui, sans-serif;
-  font-size: 25px;
-  font-weight: 500;
+  font-family: "Oswald", sans-serif;
+  font-weight: 600;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+  color: #f4f5f7;
   line-height: 1;
+}
+.auth-card__tagline {
+  font-size: 13px;
+  color: #8a8f98;
+  margin-top: -4px;
 }
 .auth-card__subtitle {
   margin: -8px 0 18px;
@@ -1344,81 +1332,75 @@ button.account-menu__item:focus-visible {
   text-align: center;
 }
 .auth-card__tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  display: flex;
+  gap: 4px;
   padding: 5px;
-  margin-bottom: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.075);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  margin-bottom: 18px;
+  border-radius: 16px;
+  background: #1a1a1d;
 }
 .auth-card__tab {
-  height: 42px;
+  flex: 1;
+  padding: 11px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
-  color: rgba(244, 245, 247, 0.62);
+  color: #8a8f98;
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  text-align: center;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 .auth-card__tab.is-active {
-  background: rgba(244, 245, 247, 0.96);
+  background: #f4f5f7;
   color: #15161b;
-  box-shadow: 0 8px 18px -14px rgba(255, 255, 255, 0.45);
+  font-weight: 700;
 }
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
 }
 .auth-field {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 50px;
-  padding: 0 14px;
-  border-radius: 15px;
-  /* fundo solido (nao translucido) p/ casar 1:1 com o autofill do Chrome;
-     tom alinhado ao botao "Registrar-se" neutro (barra de abas, rgba branco .08) */
-  background: #2f3034;
-  border: 1px solid rgba(255, 255, 255, 0.095);
-  color: rgba(244, 245, 247, 0.66);
-  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  gap: 11px;
+  height: 52px;
+  padding: 0 15px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #222224 0%, #18181a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #8a8f98;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 .auth-field input {
-  width: 100%;
+  flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: #f4f5f7;
+  color: #e7e9ee;
   font: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
 }
 .auth-field input::placeholder {
-  color: rgba(244, 245, 247, 0.46);
+  color: #6a6f78;
 }
-/* selecao de texto no tema escuro (no lugar do azul padrao) */
 .auth-field input::selection {
   background: rgba(236, 91, 83, 0.28);
   color: #fff;
 }
-/* mata o fundo branco/azul do autofill do Chrome e mantem o tema escuro */
 .auth-field input:-webkit-autofill,
 .auth-field input:-webkit-autofill:hover,
 .auth-field input:-webkit-autofill:focus,
 .auth-field input:-webkit-autofill:active {
-  -webkit-text-fill-color: #f4f5f7;
-  -webkit-box-shadow: 0 0 0 1000px #2f3034 inset;
-  caret-color: #f4f5f7;
+  -webkit-text-fill-color: #e7e9ee;
+  -webkit-box-shadow: 0 0 0 1000px #1e1e20 inset;
+  caret-color: #e7e9ee;
   transition: background-color 9999s ease-out 0s;
 }
-/* botao de visualizar senha */
 .auth-field__toggle {
   display: inline-flex;
   align-items: center;
@@ -1428,39 +1410,47 @@ button.account-menu__item:focus-visible {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: rgba(244, 245, 247, 0.55);
+  color: #8a8f98;
   cursor: pointer;
   transition: color 0.16s ease;
 }
 .auth-field__toggle:hover {
   color: #f4f5f7;
 }
+.auth-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 2px 2px 4px;
+}
 .auth-remember {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   width: fit-content;
-  color: rgba(244, 245, 247, 0.64);
+  color: #c2c5cc;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 .auth-remember input {
   appearance: none;
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  border: 1.5px solid #3a3a3e;
+  background: transparent;
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease;
 }
 .auth-remember input:checked {
-  background: linear-gradient(180deg, #ee6b63, #d84640);
+  background: linear-gradient(180deg, #f06a62, #e14f47);
   border-color: transparent;
 }
 .auth-remember input:checked::after {
@@ -1471,13 +1461,6 @@ button.account-menu__item:focus-visible {
   border: solid #fff;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-}
-.auth-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  width: 100%;
 }
 .auth-form__error {
   margin: 0;
@@ -1497,17 +1480,18 @@ button.account-menu__item:focus-visible {
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
-  color: rgba(244, 245, 247, 0.7);
+  color: #9aa0aa;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   line-height: 1.35;
-  transition: border-color 0.16s ease, color 0.16s ease;
+  transition: color 0.16s ease;
 }
 .auth-resend--forgot {
-  align-self: flex-end;
-  margin-left: auto;
+  border-bottom: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .auth-resend:hover {
   color: #ffaaa5;
@@ -1517,41 +1501,35 @@ button.account-menu__item:focus-visible {
   opacity: 0.65;
 }
 .auth-submit {
-  height: 50px;
-  margin-top: 2px;
+  height: 56px;
+  margin-top: 4px;
   border: 0;
-  border-radius: 999px;
-  /* coral -> vinho: volume de "placa flutuante" + rim light no topo */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 42%),
-    linear-gradient(180deg, #ee6961 0%, #d94740 54%, #bf3833 100%);
-  color: #ffffff;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f06a62 0%, #e14f47 100%);
+  color: #fff;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 12px 26px -18px rgba(236, 91, 83, 0.46);
-  transition: filter 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  box-shadow: 0 14px 30px -10px rgba(236, 91, 83, 0.55);
+  transition: filter 0.16s ease, transform 0.16s ease;
 }
 .auth-submit:hover {
   filter: brightness(1.06);
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 16px 30px -20px rgba(236, 91, 83, 0.58);
 }
 .auth-submit:disabled {
   cursor: wait;
   filter: grayscale(0.25) brightness(0.9);
 }
 .auth-field:focus-within {
-  background: #333438;
-  border-color: rgba(244, 245, 247, 0.22);
-  box-shadow:
-    0 0 0 3px rgba(255, 255, 255, 0.045),
-    0 10px 22px -20px rgba(236, 91, 83, 0.42);
+  border-color: rgba(244, 245, 247, 0.14);
+  box-shadow: 0 0 0 3px rgba(236, 91, 83, 0.12);
 }
 .auth-card__tab:focus-visible,
 .auth-submit:focus-visible,
@@ -1570,8 +1548,7 @@ button.account-menu__item:focus-visible {
   }
 
   .auth-card {
-    padding: 22px;
-    border-radius: 24px;
+    padding: 0;
   }
 }
 
@@ -2071,6 +2048,15 @@ button.account-menu__item:focus-visible {
 .kcard.is-done .kcard__title {
   color: var(--muted);
   text-decoration: line-through;
+}
+/* Elementos exclusivos do mobile (titulo da tela, barra de progresso do card,
+   contador ao recolher). No desktop ficam ocultos; o mobile/kanban.css os exibe. */
+.tarefas-title,
+.kcard__progress,
+.kcard__pct,
+.lane__count,
+.checklist__date-native {
+  display: none;
 }
 
 /* Checkbox — circulo (recriacao CSS+GSAP do berlix; ref. Trello) */
@@ -2972,30 +2958,19 @@ button.account-menu__item:focus-visible {
   margin: 0.25em 0;
   min-height: 1.6em;
 }
+/* Ao DIGITAR, os titulos ficam em tamanho uniforme (sem texto gigante) — so um
+   peso/cor de cue. O tamanho real aparece na visualizacao (.md-rendered). */
 .mde__prose h1,
 .mde__prose h2,
 .mde__prose h3,
 .mde__prose h4,
 .mde__prose h5,
 .mde__prose h6 {
-  margin: 0.12em 0 0.35em;
+  margin: 0.25em 0;
   color: var(--fg);
-  font-weight: 850;
-  line-height: 1.12;
-}
-.mde__prose h1 {
-  font-size: 28px;
-}
-.mde__prose h2 {
-  font-size: 23px;
-}
-.mde__prose h3 {
-  font-size: 19px;
-}
-.mde__prose h4,
-.mde__prose h5,
-.mde__prose h6 {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
 }
 .mde__prose ul,
 .mde__prose ol {

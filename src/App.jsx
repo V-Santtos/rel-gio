@@ -139,7 +139,7 @@ const SIDEBAR_ITEMS = [
 // e o estado inicial do app), Cronometro a esquerda e Tarefas a direita.
 const MOBILE_NAV_ITEMS = [
   SIDEBAR_ITEMS[1], // Cronometro
-  SIDEBAR_ITEMS[0], // Foco
+  { ...SIDEBAR_ITEMS[0], center: true }, // Foco — FAB central fixo
   SIDEBAR_ITEMS[2], // Tarefas
 ];
 
@@ -759,9 +759,35 @@ function TarefasSection({ userId }) {
         finalLanes = [initLane, ...nextLanes];
       }
 
+      // Primeiro acesso ao modo Padrao: abre com as colunas recolhidas (uma vez
+      // so; depois respeita o manual). Feito antes do setLanes, pras colunas ja
+      // nascerem recolhidas (sem flash). Espelha o comportamento da Semana.
+      let lanesToSet = finalLanes;
+      if (!localStorage.getItem("fluxtime.default-collapsed-init")) {
+        localStorage.setItem("fluxtime.default-collapsed-init", "1");
+        lanesToSet = finalLanes.map((lane) =>
+          isWeekDayKey(lane.dayKey) ? lane : { ...lane, collapsed: true }
+        );
+        if (remoteEnabled) {
+          const ids = lanesToSet
+            .filter((lane) => !isWeekDayKey(lane.dayKey))
+            .map((lane) => lane.id);
+          if (ids.length) {
+            supabase
+              .from("task_lanes")
+              .update({ collapsed: true })
+              .eq("user_id", userId)
+              .in("id", ids)
+              .then(({ error }) => {
+                if (error) console.warn("[board] erro ao recolher padrao:", error);
+              });
+          }
+        }
+      }
+
       setLabels(nextLabels);
       setRuntimeLabels(nextLabels);
-      setLanes(finalLanes);
+      setLanes(lanesToSet);
       setBoardMode("default");
       setBoardReady(true);
     }
@@ -832,7 +858,24 @@ function TarefasSection({ userId }) {
     if (nextMode === boardMode) return;
     lanesAnimated.current = false;
     setBoardMode(nextMode);
-    setLanes((list) => list.map((lane) => ({ ...lane, mode: nextMode })));
+    // No primeiro acesso ao Modo Semana, abre tudo recolhido (uma vez so;
+    // depois respeita o que o usuario expandir/recolher). Feito aqui, junto da
+    // troca de modo, pra as colunas ja nascerem recolhidas (sem flash).
+    const collapseWeekInit =
+      nextMode === "week" &&
+      boardReady &&
+      !localStorage.getItem("fluxtime.week-collapsed-init");
+    if (collapseWeekInit) {
+      localStorage.setItem("fluxtime.week-collapsed-init", "1");
+    }
+    setLanes((list) =>
+      list.map((lane) => ({
+        ...lane,
+        mode: nextMode,
+        collapsed:
+          collapseWeekInit && isWeekDayKey(lane.dayKey) ? true : lane.collapsed,
+      }))
+    );
     if (!remoteEnabled) return;
     supabase
       .from("task_lanes")
@@ -841,6 +884,16 @@ function TarefasSection({ userId }) {
       .then(({ error }) => {
         if (error) reportSyncError("Nao consegui salvar o modo do quadro.", error);
       });
+    if (collapseWeekInit) {
+      supabase
+        .from("task_lanes")
+        .update({ collapsed: true })
+        .eq("user_id", userId)
+        .in("day_key", WEEK_DAY_KEYS)
+        .then(({ error }) => {
+          if (error) console.warn("[board] erro ao recolher semana:", error);
+        });
+    }
   };
 
   const syncCard = async (laneId, card) => {
@@ -1273,6 +1326,7 @@ function TarefasSection({ userId }) {
   return (
     <main className="tarefas">
       <div className="tarefas-toolbar" aria-label="Modo de visualizacao das tarefas">
+        <h1 className="tarefas-title">Tarefas</h1>
         <div className="tarefas-mode" role="tablist" aria-label="Modo do quadro">
           <button
             type="button"
@@ -1663,6 +1717,31 @@ function TimerApp({ session, onLogout, entered }) {
       }
     );
   }, [expanded]);
+
+  // Girar o celular em tela cheia: o layout dos claquetes muda via CSS
+  // (empilhado <-> lado a lado); aqui so um "pop" GSAP minimo pra suavizar a
+  // troca de orientacao. Listener so ativo enquanto o fullscreen do Foco esta on.
+  useEffect(() => {
+    if (!focoExpanded) return undefined;
+    const mq = window.matchMedia("(orientation: landscape)");
+    const onChange = () => {
+      const el = clockElRef.current;
+      if (!el || prefersReducedMotion()) return;
+      gsap.fromTo(
+        el,
+        { scale: 0.92, opacity: 0.4 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.4,
+          ease: "power2.out",
+          clearProps: "scale,opacity",
+        }
+      );
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [focoExpanded]);
 
   // F3 - Auto-expandir ao iniciar o Pomodoro, sequenciado: espera os controles
   // sairem e entao cresce pra tela cheia. Minimizar na mao suprime ate reiniciar.
