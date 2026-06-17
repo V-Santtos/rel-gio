@@ -37,7 +37,7 @@
     display: flex;
     align-items: flex-end;
     width: 100%;
-    padding: 8px 8px calc(12px + env(safe-area-inset-bottom));
+    padding: 6px 8px calc(4px + env(safe-area-inset-bottom));
     /* Gradiente ancorado em px (completa em 64px) + cor solida final: a area
        extra da safe-area do iOS fica uniforme, sem o degrade "fantasma" que
        parecia um gap preto abaixo dos icones. */
@@ -60,8 +60,8 @@
     align-items: center;
     justify-content: flex-end;
     gap: 5px;
-    min-height: 52px;
-    padding: 6px 4px;
+    min-height: 50px;
+    padding: 6px 4px 2px;
     border: 0;
     background: transparent;
     color: var(--dock-icon);
@@ -107,8 +107,8 @@
     align-items: center;
     justify-content: flex-end;
     gap: 5px;
-    min-height: 52px;
-    padding: 6px 4px;
+    min-height: 50px;
+    padding: 6px 4px 2px;
     border: 0;
     background: transparent;
     cursor: pointer;
