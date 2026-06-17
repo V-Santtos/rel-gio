@@ -168,27 +168,29 @@ function PhaseTimerDisplay({ timer, showHours, expanded, onToggleExpand, clockRe
     }
   }, [timer.mode, timer.remaining]);
 
-  // iOS: no primeiro paint o WebKit reporta a altura dinamica (dvh) e o
-  // env(safe-area-inset-bottom) como 0/errado ate o PRIMEIRO evento de viewport.
-  // Com isso a bottom nav assenta deslocada e sobra um vao embaixo (mostrando o
-  // fundo) — so corrige quando o usuario arrasta a tela. Aqui forcamos esse
-  // "commit" logo apos montar (uma vez): micro-scroll que reproduz o arraste +
-  // reflow + resize. Sem animacao, entao ok com prefers-reduced-motion.
+  // iOS/PWA: o CSS (100dvh, env(safe-area-*)) e a ancoragem de position:fixed
+  // por bottom:0 nascem ERRADOS no primeiro paint do standalone e so corrigem
+  // apos um scroll manual (por isso "arrastar conserta"). Ja o window.innerHeight
+  // (JS) e confiavel desde o launch. Entao medimos a altura real da viewport e
+  // expomos em --app-h; a bottom nav e ancorada por top:0 + height:var(--app-h)
+  // (ver nav.css), nascendo no lugar certo sem depender do bottom:0/dvh.
   useEffect(() => {
-    if (!window.matchMedia("(max-width: 768px)").matches) return undefined;
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      const y = window.scrollY;
-      window.scrollTo(0, y + 1);
-      window.scrollTo(0, y);
-      void document.documentElement.offsetHeight; // forca reflow sincrono
-      raf2 = requestAnimationFrame(() =>
-        window.dispatchEvent(new Event("resize"))
-      );
-    });
+    const root = document.documentElement;
+    const setAppH = () => {
+      root.style.setProperty("--app-h", `${window.innerHeight}px`);
+    };
+    setAppH();
+    const raf = requestAnimationFrame(setAppH);
+    window.addEventListener("resize", setAppH);
+    window.addEventListener("orientationchange", setAppH);
+    window.addEventListener("pageshow", setAppH);
+    window.visualViewport?.addEventListener("resize", setAppH);
     return () => {
-      cancelAnimationFrame(raf1);
-      if (raf2) cancelAnimationFrame(raf2);
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", setAppH);
+      window.removeEventListener("orientationchange", setAppH);
+      window.removeEventListener("pageshow", setAppH);
+      window.visualViewport?.removeEventListener("resize", setAppH);
     };
   }, []);
 

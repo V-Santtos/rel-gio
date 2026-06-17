@@ -13,15 +13,22 @@
     display: none;
   }
 
-  /* Wrapper fixo. Padding-top dá folga pro círculo do FAB vazar acima. */
+  /* Wrapper fixo ancorado no TOPO da viewport (top:0 + height:var(--app-h)) em
+     vez de bottom:0. Motivo: no launch do PWA/iOS, bottom:0 + 100dvh nascem
+     errados e a barra flutua ate um scroll manual; top:0 e a altura medida via
+     JS (--app-h = window.innerHeight) nascem corretos. O wrapper ocupa a tela
+     toda (transparente, pointer-events:none) e empurra a barra pro fundo real
+     com justify-content:flex-end. O espaco vazio acima deixa o FAB vazar. */
   .mobile-nav {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    top: 0;
+    height: var(--app-h, 100dvh);
     z-index: 40;
-    padding: 28px 0 0;
     pointer-events: none;
     transition: opacity 0.4s ease, transform 0.45s ease;
   }
