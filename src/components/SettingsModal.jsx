@@ -260,13 +260,17 @@ export default function SettingsModal({ config, setConfig, onClose }) {
             max={59}
             onChange={(v) => patchCycle(i, { focusMinutes: v })}
           />
-          <NumberStepper
-            label="Seg"
-            value={c.focusSeconds}
-            min={0}
-            max={59}
-            onChange={(v) => patchCycle(i, { focusSeconds: v })}
-          />
+          {/* Segundos so no desktop: no mobile nao compensa (ajusta-se no
+              minuto) e abre espaco. Os valores de segundos seguem em config. */}
+          {!isMobile ? (
+            <NumberStepper
+              label="Seg"
+              value={c.focusSeconds}
+              min={0}
+              max={59}
+              onChange={(v) => patchCycle(i, { focusSeconds: v })}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -282,13 +286,15 @@ export default function SettingsModal({ config, setConfig, onClose }) {
             max={59}
             onChange={(v) => patchCycle(i, { breakMinutes: v })}
           />
-          <NumberStepper
-            label="Seg"
-            value={c.breakSeconds}
-            min={0}
-            max={59}
-            onChange={(v) => patchCycle(i, { breakSeconds: v })}
-          />
+          {!isMobile ? (
+            <NumberStepper
+              label="Seg"
+              value={c.breakSeconds}
+              min={0}
+              max={59}
+              onChange={(v) => patchCycle(i, { breakSeconds: v })}
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -334,11 +340,16 @@ export default function SettingsModal({ config, setConfig, onClose }) {
                     onClick={() => setExpandedCycle(open ? null : i)}
                   >
                     <span className="cyclecard__name">Ciclo {i + 1}</span>
-                    <span className="cyclecard__summary">
-                      Foco {fmtDur(c.focusHours, c.focusMinutes, c.focusSeconds)}
-                      {" · "}
-                      Break {fmtDur(0, c.breakMinutes, c.breakSeconds)}
-                    </span>
+                    {/* Resumo so quando RECOLHIDO: aberto, os steppers ja
+                        mostram tudo (era redundante ao lado do titulo). */}
+                    {!open ? (
+                      <span className="cyclecard__summary">
+                        Foco{" "}
+                        {fmtDur(c.focusHours, c.focusMinutes, c.focusSeconds)}
+                        {" · "}
+                        Break {fmtDur(0, c.breakMinutes, c.breakSeconds)}
+                      </span>
+                    ) : null}
                     <ChevronDown
                       className="cyclecard__chev"
                       size={18}

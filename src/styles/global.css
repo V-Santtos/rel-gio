@@ -1183,12 +1183,16 @@ button.account-menu__item:focus-visible {
 .stepper__btn svg {
   transition: transform 0.16s ease;
 }
-.stepper__btn:hover {
-  color: var(--accent);
-  background: var(--hover);
-}
-.stepper__btn:hover svg {
-  transform: scale(1.18);
+/* :hover so em dispositivos com ponteiro real (mouse). No toque (iOS) o :hover
+   GRUDA depois do tap e deixava a seta presa no destaque vermelho. */
+@media (hover: hover) and (pointer: fine) {
+  .stepper__btn:hover {
+    color: var(--accent);
+    background: var(--hover);
+  }
+  .stepper__btn:hover svg {
+    transform: scale(1.18);
+  }
 }
 .stepper__btn:active {
   transform: scale(0.9);

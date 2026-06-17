@@ -168,6 +168,30 @@ function PhaseTimerDisplay({ timer, showHours, expanded, onToggleExpand, clockRe
     }
   }, [timer.mode, timer.remaining]);
 
+  // iOS: no primeiro paint o WebKit reporta a altura dinamica (dvh) e o
+  // env(safe-area-inset-bottom) como 0/errado ate o PRIMEIRO evento de viewport.
+  // Com isso a bottom nav assenta deslocada e sobra um vao embaixo (mostrando o
+  // fundo) — so corrige quando o usuario arrasta a tela. Aqui forcamos esse
+  // "commit" logo apos montar (uma vez): micro-scroll que reproduz o arraste +
+  // reflow + resize. Sem animacao, entao ok com prefers-reduced-motion.
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 768px)").matches) return undefined;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      const y = window.scrollY;
+      window.scrollTo(0, y + 1);
+      window.scrollTo(0, y);
+      void document.documentElement.offsetHeight; // forca reflow sincrono
+      raf2 = requestAnimationFrame(() =>
+        window.dispatchEvent(new Event("resize"))
+      );
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, []);
+
   useLayoutEffect(() => {
     const focusLayer = focusLayerRef.current;
     const breakLayer = breakLayerRef.current;

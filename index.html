@@ -23,8 +23,29 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Flux Time</title>
-    <!-- Fundo escuro no primeiro paint: evita flash branco (FOUC) antes do CSS
-         carregar, inclusive na area inferior/safe-area. -->
+    <!-- Tema aplicado ANTES do primeiro paint: sem isso o React so seta o
+         data-theme num useEffect (depois de montar), entao o primeiro paint cai
+         no :root (--bg claro #eceef1) e pisca branco — flash ao abrir o app e
+         borda branca vazando na safe-area do login (tela de auth e #101010 mas o
+         body por baixo fica claro ate o JS rodar). Espelha o initialTheme(). -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("rel-gio:theme");
+          var theme =
+            saved === "light" || saved === "dark"
+              ? saved
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+    <!-- Fallback de fundo escuro no html/body para o intervalo antes do CSS
+         (modulo) carregar — o data-theme acima ja garante o --bg correto. -->
     <style>
       html,
       body {

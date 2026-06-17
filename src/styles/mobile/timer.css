@@ -46,6 +46,19 @@
   .sessmodal__cycle {
     padding: 12px 12px 14px;
   }
+  /* Versao em LINHA UNICA: grupo Foco (Horas/Min) encostado a ESQUERDA e o
+     Break ISOLADO a DIREITA, separados pelo vao do meio. Divisor vertical sai
+     de cena (so servia ao layout do desktop). */
+  .sessmodal__cycle-body {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 44px; /* Foco e Break proximos (centrados), sem grudar nas bordas */
+  }
+  .sessmodal__group-divider {
+    display: none;
+  }
 
   /* ---- Ciclos como CARDS estilo Kanban (mobile) ----
      Cada ciclo e um card RESUMIDO (Foco/Break em texto) numa superficie mais
@@ -96,6 +109,7 @@
   }
   .cyclecard__chev {
     flex: 0 0 auto;
+    margin-left: auto; /* chevron colado a direita mesmo sem o resumo (aberto) */
     color: var(--muted);
     transition: transform 0.25s ease;
   }
@@ -108,7 +122,7 @@
     border-radius: 14px;
   }
   .cyclecard__body {
-    padding: 2px 14px 14px;
+    padding: 16px 14px 14px; /* mais respiro entre o titulo (Ciclo X) e Foco/Break */
   }
   .cyclecard__remove {
     display: inline-flex;
@@ -268,9 +282,10 @@
     width: 100%;
     margin-bottom: clamp(18px, 4vh, 40px);
   }
-  /* Linha Iniciar/Pausar + Reiniciar NAO pode estourar a largura (gerava scroll
-     horizontal + pan no iOS). O CTA cresce no espaco livre; o Reiniciar ocupa so
-     o conteudo. min-width:0 deixa o CTA encolher abaixo dos 176px. */
+  /* Linha Iniciar/Pausar + Reiniciar em METADES IGUAIS: os dois dividem a
+     largura (flex:1 1 0), em vez do CTA esticar e o Reiniciar ficar no tamanho
+     do conteudo (que deixava o Iniciar desproporcional). min-width:0 deixa
+     encolher abaixo dos 176px sem estourar a largura (scroll/pan no iOS). */
   .controls {
     width: 100%;
     gap: 10px;
@@ -278,12 +293,10 @@
   .controls .btn {
     padding: 0 18px;
   }
-  .controls .btn--cta {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+  .controls .btn--cta,
   .controls .btn--ghost {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
   .content {
     gap: clamp(14px, 2.6vh, 26px);

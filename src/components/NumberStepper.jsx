@@ -26,10 +26,19 @@ export default function NumberStepper({ label, value, min, max, onChange }) {
     const el = valueRef.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // force3D:false evita o translateZ (camada 3D) que faz o WebKit/iOS
+    // renderizar o texto do <input> em BRANCO; clearProps remove o transform
+    // inline ao terminar, pra nao deixar o digito preso/sumido no mobile.
     gsap.fromTo(
       el,
       { scale: 1.16 },
-      { scale: 1, duration: 0.22, ease: "power2.out" }
+      {
+        scale: 1,
+        duration: 0.22,
+        ease: "power2.out",
+        force3D: false,
+        clearProps: "transform",
+      }
     );
   }, [value]);
 
