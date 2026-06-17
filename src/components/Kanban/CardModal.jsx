@@ -46,7 +46,17 @@ const dueMaskFromDate = (value) => {
   return day && month ? `${day}/${month}` : "";
 };
 
-const cleanDuePart = (value) => value.replace(/\D/g, "").slice(0, 2);
+// Mantem so digitos (max 2) e, quando os 2 digitos estao completos, limita ao
+// intervalo valido: dia 01–31, mes 01–12. Com 1 digito ainda deixa digitar.
+const clampDuePart = (kind, value) => {
+  const digits = value.replace(/\D/g, "").slice(0, 2);
+  if (digits.length < 2) return digits;
+  const max = kind === "day" ? 31 : 12;
+  const number = Number(digits);
+  if (number < 1) return "01";
+  if (number > max) return String(max);
+  return digits;
+};
 
 const buildDueDate = ({ day, month }) => {
   const year = new Date().getFullYear();
@@ -268,6 +278,7 @@ export default function CardModal({
       ...current,
       [list.id]: { day: "", month: "" },
     }));
+    setDueMaskByList((current) => ({ ...current, [list.id]: "" }));
   };
 
   const patchChecklistItem = (listId, itemId, patch) => {
@@ -309,7 +320,7 @@ export default function CardModal({
     const next = {
       ...current,
       ...Object.fromEntries(
-        Object.entries(patch).map(([key, value]) => [key, cleanDuePart(value)])
+        Object.entries(patch).map(([key, value]) => [key, clampDuePart(key, value)])
       ),
     };
     setDueTextByList((state) => ({ ...state, [list.id]: next }));
@@ -320,11 +331,10 @@ export default function CardModal({
   // limpa o draftDueDate, mas o texto digitado permanece visivel.
   const onDueMaskChange = (list, raw) => {
     const digits = raw.replace(/\D/g, "").slice(0, 4);
-    const masked =
-      digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+    const day = clampDuePart("day", digits.slice(0, 2));
+    const month = clampDuePart("month", digits.slice(2, 4));
+    const masked = digits.length > 2 ? `${day}/${month}` : day;
     setDueMaskByList((current) => ({ ...current, [list.id]: masked }));
-    const day = digits.slice(0, 2);
-    const month = digits.slice(2, 4);
     const date =
       day.length === 2 && month.length === 2
         ? buildDueDate({ day, month })
@@ -774,6 +784,10 @@ export default function CardModal({
                         });
                         setMonthOpen(false);
                         setDuePickerListId(null);
+                        setDueMaskByList((current) => ({
+                          ...current,
+                          [list.id]: "",
+                        }));
                       }
                     }}
                     autoFocus
@@ -797,6 +811,10 @@ export default function CardModal({
                         });
                         setMonthOpen(false);
                         setDuePickerListId(null);
+                        setDueMaskByList((current) => ({
+                          ...current,
+                          [list.id]: "",
+                        }));
                       }}
                     >
                       Cancelar
@@ -813,16 +831,19 @@ export default function CardModal({
                     </button>
                     {/* Mobile: digitacao manual dd/mm (teclado numerico). O ano
                         e automatico. Substitui o seletor custom acima via CSS. */}
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="checklist__date-native"
-                      placeholder="dd/mm"
-                      maxLength={5}
-                      value={dueMaskByList[list.id] ?? dueMaskFromDate(list.draftDueDate)}
-                      aria-label="Data de entrega (dia/mês)"
-                      onChange={(event) => onDueMaskChange(list, event.target.value)}
-                    />
+                    <div className="checklist__date-native-wrap">
+                      <Clock size={14} strokeWidth={2.2} aria-hidden="true" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="checklist__date-native"
+                        placeholder="dd/mm"
+                        maxLength={5}
+                        value={dueMaskByList[list.id] ?? dueMaskFromDate(list.draftDueDate)}
+                        aria-label="Data de entrega (dia/mês)"
+                        onChange={(event) => onDueMaskChange(list, event.target.value)}
+                      />
+                    </div>
                   </div>
                   {duePickerListId === list.id ? (
                     <div className="checklist__date-panel">

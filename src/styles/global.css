@@ -72,6 +72,10 @@
 
   /* Dock (tema claro -> superficie CLARA, irma dos cartoes claros do flip) */
   --dock-bg: linear-gradient(180deg, #ffffff 0%, #f1f3f6 100%);
+  /* Paradas do gradiente em separado: a bottom nav mobile monta o gradiente
+     em px (nao %) pra nao esticar na area da safe-area do iOS. */
+  --dock-grad-top: #ffffff;
+  --dock-grad-bottom: #f1f3f6;
   --dock-border: rgba(0, 0, 0, 0.08);
   --dock-inner-light: rgba(255, 255, 255, 0.9);
   --dock-shadow: var(--plate-shadow);
@@ -181,6 +185,8 @@
 
   /* Dock (tema escuro -> superficie ESCURA, irma dos cartoes do flip clock) */
   --dock-bg: linear-gradient(180deg, #232327 0%, #161618 100%);
+  --dock-grad-top: #232327;
+  --dock-grad-bottom: #161618;
   --dock-border: rgba(255, 255, 255, 0.1);
   --dock-inner-light: rgba(255, 255, 255, 0.07);
   --dock-shadow: var(--plate-shadow);
@@ -2094,7 +2100,7 @@ button.account-menu__item:focus-visible {
 .kcard__progress,
 .kcard__pct,
 .lane__count,
-.checklist__date-native {
+.checklist__date-native-wrap {
   display: none;
 }
 

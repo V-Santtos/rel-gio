@@ -38,7 +38,15 @@
     align-items: flex-end;
     width: 100%;
     padding: 8px 8px calc(12px + env(safe-area-inset-bottom));
-    background: var(--dock-bg);
+    /* Gradiente ancorado em px (completa em 64px) + cor solida final: a area
+       extra da safe-area do iOS fica uniforme, sem o degrade "fantasma" que
+       parecia um gap preto abaixo dos icones. */
+    background: linear-gradient(
+        180deg,
+        var(--dock-grad-top) 0,
+        var(--dock-grad-bottom) 64px
+      )
+      var(--dock-grad-bottom);
     border-top: 1px solid var(--dock-border);
     box-shadow: var(--dock-shadow);
     overflow: visible;

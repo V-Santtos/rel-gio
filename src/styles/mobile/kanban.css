@@ -265,17 +265,32 @@
   .checklist__date-panel {
     display: none;
   }
-  /* ...e mostra o campo de texto dd/mm (digitacao manual, ano automatico). */
-  .checklist__date-native {
+  /* ...e mostra o campo de texto dd/mm (digitacao manual, ano automatico),
+     com um icone de relogio indicando que se trata de tempo. */
+  .checklist__date-native-wrap {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     margin-left: auto;
-    width: 88px;
     height: 34px;
     padding: 0 12px;
     border: 1px solid var(--field-border, var(--border));
     border-radius: 9px;
     background: var(--field-bg);
+    color: var(--muted);
+  }
+  .checklist__date-native-wrap:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .checklist__date-native-wrap > svg {
+    flex: none;
+  }
+  .checklist__date-native {
+    width: 46px;
+    padding: 0;
+    border: none;
+    background: transparent;
     color: var(--fg);
     font-family: inherit;
     font-size: 13px;
@@ -284,13 +299,12 @@
     letter-spacing: 0.04em;
     text-align: center;
   }
+  .checklist__date-native:focus {
+    outline: none;
+  }
   .checklist__date-native::placeholder {
     color: var(--muted);
     font-weight: 500;
     letter-spacing: normal;
-  }
-  .checklist__date-native:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
   }
 }
