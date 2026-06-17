@@ -27,8 +27,13 @@
     gap: clamp(16px, 3vh, 28px);
     padding: clamp(16px, 4.5vw, 28px);
     padding-top: max(clamp(16px, 4.5vw, 28px), env(safe-area-inset-top));
-    /* Rede de seguranca: nenhum estouro horizontal vira scroll/pan no mobile. */
-    overflow-x: hidden;
+    /* Rede de seguranca contra estouro horizontal. USAR clip, NAO hidden:
+       overflow-x:hidden forca overflow-y:auto -> .app vira scroll container,
+       e o WebKit/iOS passa a ancorar a .mobile-nav (position:fixed) NESSE
+       container em vez do viewport -> nav flutua com um vao no fundo e so
+       assenta apos rolar. clip corta o estouro sem criar scroll container,
+       entao o fixed volta a ancorar no viewport. (Chromium nao tem esse bug.) */
+    overflow-x: clip;
   }
 
   /* Conta/config vira um HAMBURGUER no topo (canto superior direito), em vez
