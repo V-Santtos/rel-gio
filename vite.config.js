@@ -35,6 +35,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,mp3}"],
+        // Musica de fundo e longa/pesada -> streaming sob demanda, NUNCA
+        // pre-cacheada no SW (senao baixaria ~85 MB na instalacao do PWA).
+        globIgnores: ["**/sounds/music/**"],
       },
     }),
   ],

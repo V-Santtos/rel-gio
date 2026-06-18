@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import { Flip } from "gsap/Flip";
@@ -28,6 +28,7 @@ import {
   setLabels as setRuntimeLabels,
 } from "./components/Kanban/labels.js";
 import SettingsModal from "./components/SettingsModal.jsx";
+import MusicPanel from "./components/MusicPanel.jsx";
 import EntryExperience from "./components/EntryExperience.jsx";
 import {
   DEFAULT_CYCLE,
@@ -39,6 +40,15 @@ import AuthPanel from "./components/AuthPanel.jsx";
 import { useTimer } from "./hooks/useTimer.js";
 import { useStopwatch } from "./hooks/useStopwatch.js";
 import { playPhaseEnd, playTick, primeAudio, playAlarm } from "./lib/sound.js";
+import {
+  MUSIC_TRACKS,
+  primeMusic,
+  startMusic,
+  stopMusic,
+  duckMusic,
+  setMusicPlaylist,
+  setMusicVolume,
+} from "./lib/music.js";
 import { syncPushSubscription } from "./lib/pushSubscription.js";
 import {
   loadAllAlarms,
@@ -249,6 +259,11 @@ function FocoSection({
   expanded,
   onToggleExpand,
   clockRef,
+  musicTracks,
+  musicEnabled,
+  onToggleMusic,
+  musicVolume,
+  onMusicVolume,
 }) {
   const { running, start, pause, reset } = timer;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -359,6 +374,7 @@ function FocoSection({
               className="btn btn--cta"
               onClick={() => {
                 primeAudio(); // destrava o audio no gesto do usuario
+                primeMusic(); // destrava tambem o motor de musica
                 start();
               }}
             >
@@ -385,6 +401,14 @@ function FocoSection({
           <span>Configurações</span>
         </button>
       </div>
+
+      <MusicPanel
+        tracks={musicTracks}
+        enabled={musicEnabled}
+        onToggle={onToggleMusic}
+        volume={musicVolume}
+        onVolume={onMusicVolume}
+      />
 
       {settingsOpen ? (
         <SettingsModal
@@ -1647,6 +1671,118 @@ function TimerApp({ session, onLogout, entered }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer.remaining]);
 
+  // ===== Musica de fundo do modo Foco =====
+  const [musicEnabled, setMusicEnabled] = useState(() => {
+    try {
+      const raw = localStorage.getItem("fluxtime.music.enabled");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr)
+        ? arr.filter((id) => MUSIC_TRACKS.some((t) => t.id === id))
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  const [musicVolume, setMusicVol] = useState(() => {
+    const raw = Number(localStorage.getItem("fluxtime.music.volume"));
+    return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.5;
+  });
+
+  const enabledMusicSrcs = useMemo(
+    () =>
+      MUSIC_TRACKS.filter((t) => musicEnabled.includes(t.id)).map((t) => t.src),
+    [musicEnabled]
+  );
+
+  const toggleMusic = useCallback((id) => {
+    setMusicEnabled((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem("fluxtime.music.enabled", JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  const changeMusicVolume = useCallback((v) => {
+    setMusicVol(v);
+    setMusicVolume(v);
+    try {
+      localStorage.setItem("fluxtime.music.volume", String(v));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const musicOnRef = useRef(false);
+  const prevCycleRef = useRef(timer.cycle);
+  const prevMusicRunRef = useRef(false);
+
+  // Volume inicial no motor (1x).
+  useEffect(() => {
+    setMusicVolume(musicVolume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Start/stop. REGRA: a musica so DA INICIO no "Iniciar" (borda de subida do
+  // running na secao Foco). Mexer nos toggles enquanto roda apenas atualiza a
+  // rotacao (ou para, se zerar) -- NUNCA inicia playback sozinho.
+  useEffect(() => {
+    const running = section === "foco" && timer.running;
+    const justStarted = running && !prevMusicRunRef.current;
+    prevMusicRunRef.current = running;
+
+    if (!running) {
+      if (musicOnRef.current) {
+        stopMusic();
+        musicOnRef.current = false;
+      }
+      return;
+    }
+    if (justStarted) {
+      if (enabledMusicSrcs.length > 0) {
+        startMusic(enabledMusicSrcs);
+        musicOnRef.current = true;
+      }
+      return;
+    }
+    // Ja rodando e os toggles mudaram:
+    if (musicOnRef.current) {
+      if (enabledMusicSrcs.length === 0) {
+        stopMusic();
+        musicOnRef.current = false;
+      } else {
+        setMusicPlaylist(enabledMusicSrcs);
+      }
+    }
+  }, [section, timer.running, enabledMusicSrcs]);
+
+  // Virada de ciclo: a musica ZERA do inicio (nunca comeca o ciclo no meio).
+  useEffect(() => {
+    if (timer.cycle !== prevCycleRef.current) {
+      prevCycleRef.current = timer.cycle;
+      if (musicOnRef.current && enabledMusicSrcs.length > 0) {
+        startMusic(enabledMusicSrcs);
+      }
+    }
+  }, [timer.cycle, enabledMusicSrcs]);
+
+  // Duck: ultimos 7s de qualquer fase -> ~30% (pra ouvir tic-tac + respiro);
+  // volta a 100% ao entrar na proxima fase.
+  useEffect(() => {
+    if (!musicOnRef.current) return;
+    const ducking =
+      section === "foco" &&
+      timer.running &&
+      timer.remaining >= 1 &&
+      timer.remaining <= 7;
+    duckMusic(ducking);
+  }, [timer.remaining, timer.running, section]);
+
   const stopwatch = useStopwatch();
 
   // Mostra HH:MM:SS se QUALQUER ciclo usar horas (evita pulo de layout na troca).
@@ -1802,6 +1938,11 @@ function TimerApp({ session, onLogout, entered }) {
               expanded={expanded}
               onToggleExpand={toggleExpanded}
               clockRef={clockElRef}
+              musicTracks={MUSIC_TRACKS}
+              musicEnabled={musicEnabled}
+              onToggleMusic={toggleMusic}
+              musicVolume={musicVolume}
+              onMusicVolume={changeMusicVolume}
             />
           ) : null
         ) : section === "cronometro" ? (
