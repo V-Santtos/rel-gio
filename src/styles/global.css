@@ -1928,6 +1928,13 @@ button.account-menu__item:focus-visible {
   flex-direction: column;
   gap: 8px;
   padding: 2px 8px 10px;
+  border-radius: 10px;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 0.15s ease;
+}
+.lane__cards.is-drop-target {
+  outline-color: var(--accent);
 }
 /* Modo Semana: faixas Manha/Tarde/Noite (e "A definir") sob demanda. */
 .lane__cards.is-week {

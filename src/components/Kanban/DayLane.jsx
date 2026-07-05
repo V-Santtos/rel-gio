@@ -39,6 +39,16 @@ gsap.registerPlugin(Flip);
 let orderSeq = 0;
 const nextOrder = () => ++orderSeq;
 
+// Preview de arraste transparente: suprime o "ghost" automatico do browser no
+// drag nativo (HTML5 DnD), deixando so o proprio item (opacity reduzida via
+// CSS, classe `is-dragging`) como feedback visual. Sem isso, o preview nativo
+// duplicava com o item real durante o rearranjo ao vivo.
+const EMPTY_DRAG_IMAGE = typeof Image !== "undefined" ? new Image() : null;
+if (EMPTY_DRAG_IMAGE) {
+  EMPTY_DRAG_IMAGE.src =
+    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+}
+
 /**
  * Notificacao em glass morphism disparada quando um alarme toca com a aba em
  * foco. Slide-in da direita (GSAP); fecha sozinho em 6,5s ou pelo botao X.
@@ -200,6 +210,7 @@ export default function DayLane({
   onUpdateCard,
   onDeleteCard,
   onArchiveCards,
+  onCrossLaneDrop,
   onDeleteLane,
   onCreateAlarm,
   onUpdateAlarm,
@@ -249,6 +260,9 @@ export default function DayLane({
   const lastOverItem = useRef(null);
   const itemFlip = useRef(null);
   const [dragId, setDragId] = useState(null);
+  // Destaque leve na coluna quando um card de OUTRA lane passa por cima
+  // (cross-lane drag, sem preview de posicao — so confirma que da pra soltar).
+  const [columnDragOver, setColumnDragOver] = useState(false);
 
   const prefersReduced = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -258,7 +272,15 @@ export default function DayLane({
   };
 
   useEffect(() => {
-    setCards(initialCards);
+    setCards((prev) => {
+      const prevIds = new Set(prev.map((c) => c.id));
+      const arrived = initialCards.find((c) => !prevIds.has(c.id));
+      // Card chegou de fora (drag cross-lane ou sync remoto) sem passar pela
+      // acao local de criar (que ja marca o proprio pendingPop): dispara o
+      // mesmo "pop" de card novo.
+      if (arrived) pendingPop.current = arrived.id;
+      return initialCards;
+    });
   }, [initialCards]);
 
   useEffect(() => {
@@ -623,8 +645,9 @@ export default function DayLane({
   const onItemDragStart = (e, type, id) => {
     e.stopPropagation(); // nao acionar o arraste de COLUNA (section)
     e.dataTransfer.effectAllowed = "move";
+    if (EMPTY_DRAG_IMAGE) e.dataTransfer.setDragImage(EMPTY_DRAG_IMAGE, 0, 0);
     try {
-      e.dataTransfer.setData("text/plain", `${type}:${id}`);
+      e.dataTransfer.setData("text/plain", `${type}:${id}:${laneId}`);
     } catch {
       /* alguns navegadores nao deixam setData aqui; ok */
     }
@@ -791,6 +814,7 @@ export default function DayLane({
       draggable={grabbed}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
+        if (EMPTY_DRAG_IMAGE) e.dataTransfer.setDragImage(EMPTY_DRAG_IMAGE, 0, 0);
         setDragging(true);
         onLaneDragStart?.(laneId);
       }}
@@ -967,7 +991,37 @@ export default function DayLane({
       ) : null}
 
       <div className="lane__collapsible" ref={bodyRef}>
-        <div className={`lane__cards${weekMode ? " is-week" : ""}`}>
+        <div
+          className={`lane__cards${weekMode ? " is-week" : ""}${
+            columnDragOver ? " is-drop-target" : ""
+          }`}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={() => {
+            if (weekMode) setColumnDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget)) return;
+            setColumnDragOver(false);
+          }}
+          onDrop={(e) => {
+            // Rede de seguranca: se o item mudou de faixa (periodo) durante o
+            // arraste, o React remonta o no em outro container e o `dragend`
+            // nativo do elemento original pode nao disparar, deixando
+            // `dragId`/`.is-dragging` presos. O `drop` sempre dispara no
+            // alvo (independente do no de origem), entao limpamos aqui tambem.
+            e.preventDefault();
+            const [type, id, fromLaneId] = (
+              e.dataTransfer.getData("text/plain") || ""
+            ).split(":");
+            if (type === "card" && fromLaneId && fromLaneId !== laneId) {
+              onCrossLaneDrop?.({ cardId: id, fromLaneId });
+            }
+            dragItem.current = null;
+            lastOverItem.current = null;
+            setDragId(null);
+            setColumnDragOver(false);
+          }}
+        >
           {weekMode ? renderWeekGroups() : cards.map(renderCard)}
         </div>
 

@@ -1026,6 +1026,34 @@ function TarefasSection({ userId }) {
     syncCard(laneId, nextCard);
   };
 
+  // Move um card entre colunas/dias (drop cross-lane). Mantem o `period` do
+  // card (sem perguntar nada no drop) e o insere no fim da faixa equivalente
+  // no dia de destino. NAO usa `deleteCard` (apaga a linha no Supabase) — o
+  // `syncCard` ja faz upsert pelo mesmo id com o `lane_id` novo, o que move a
+  // linha sozinho.
+  const moveCardAcrossLanes = (fromLaneId, toLaneId, cardId) => {
+    setLanes((list) => {
+      const fromLane = list.find((lane) => lane.id === fromLaneId);
+      const card = fromLane?.cards.find((c) => c.id === cardId);
+      if (!card) return list;
+      const period = card.period ?? null;
+      const toLane = list.find((lane) => lane.id === toLaneId);
+      const band = (toLane?.cards || []).filter((c) => (c.period ?? null) === period);
+      const order = band.length ? Math.max(...band.map((c) => c.order ?? 0)) + 1 : 0;
+      const movedCard = { ...card, order };
+      syncCard(toLaneId, movedCard);
+      return list.map((lane) => {
+        if (lane.id === fromLaneId) {
+          return { ...lane, cards: lane.cards.filter((c) => c.id !== cardId) };
+        }
+        if (lane.id === toLaneId) {
+          return { ...lane, cards: [...lane.cards, movedCard] };
+        }
+        return lane;
+      });
+    });
+  };
+
   const deleteCard = (laneId, cardId) => {
     setLanes((list) =>
       list.map((lane) =>
@@ -1395,6 +1423,9 @@ function TarefasSection({ userId }) {
           onUpdateCard={(card) => persistCard(lane.id, card)}
           onDeleteCard={(cardId) => deleteCard(lane.id, cardId)}
           onArchiveCards={(cards) => archiveCards(lane.id, cards)}
+          onCrossLaneDrop={({ cardId, fromLaneId }) =>
+            moveCardAcrossLanes(fromLaneId, lane.id, cardId)
+          }
           onDeleteLane={() => deleteLane(lane.id)}
           canDeleteLane={!isWeekDayKey(lane.dayKey)}
           onCreateAlarm={(alarm) => persistAlarm(lane.id, alarm)}
