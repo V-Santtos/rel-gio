@@ -8,15 +8,16 @@
    ============================================================ */
 
 @media (max-width: 768px) {
-  /* Toast: sobe acima da bottom nav e ocupa a largura disponível */
+  /* Toast: sobe acima da bottom nav (78px fechados, sem env — mesma regua
+     da barra) e ocupa a largura disponível */
   .alarm-toast {
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: 88px;
     right: 16px;
     left: 16px;
     width: auto;
   }
   .alarm-save-toast {
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    bottom: 102px;
     max-width: calc(100vw - 32px);
   }
 
@@ -62,13 +63,24 @@
   }
 
   /* ── Board: colunas empilhadas verticalmente ──────────────── */
+  /* DESTRAVA a altura herdada do desktop. La o board e PRESO a viewport
+     (flex:1 + min-height:0 — o scroll e horizontal). Empilhado, esse teto
+     travava a pagina: .tarefas__lanes ficava com altura fixa e overflow-x:
+     hidden forcava overflow-y:auto -> scroll container interno que o iOS
+     nao rola. Aqui o board CRESCE com o conteudo (flex/min-height de volta
+     ao natural, overflow visible — o estouro horizontal ja e cortado pelo
+     overflow-x:clip do .app) e quem rola e a PAGINA, como nas outras secoes. */
+  .content--board .tarefas,
+  .content--board .tarefas__lanes {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
   .content--board .tarefas__lanes {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
     padding: 0 0 8px;
-    overflow-x: hidden;
-    overflow-y: visible;
+    overflow: visible;
     -webkit-mask-image: none;
     mask-image: none;
   }
@@ -90,9 +102,13 @@
   .lane__grip {
     display: none;
   }
+  /* Area de toque ampliada (40px) sem crescer o visual: o padding expande o
+     alvo e a margem negativa devolve o espaco ocupado no layout do head. */
   .lane__collapse {
-    width: 22px;
-    height: 22px;
+    width: 40px;
+    height: 40px;
+    padding: 9px;
+    margin: -9px;
   }
   .lane__title {
     font-size: 13px;
@@ -127,6 +143,12 @@
   .kcard {
     border-radius: 13px;
     padding: 13px 14px;
+    /* Toque no card so PODE rolar a pagina (vertical). Reforca o fix do
+       draggable desligado em touch (DayLane.jsx): nada sequestra o scroll. */
+    touch-action: pan-y;
+  }
+  .lane__alarm-item {
+    touch-action: pan-y;
   }
   .kcard.has-label-bars {
     padding-right: 26px;

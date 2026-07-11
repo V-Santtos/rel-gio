@@ -39,6 +39,15 @@ gsap.registerPlugin(Flip);
 let orderSeq = 0;
 const nextOrder = () => ++orderSeq;
 
+// Touch (mobile): HTML5 DnD e gesto de DESKTOP. No iOS, um elemento com
+// draggable=true SEQUESTRA o gesto de arrastar — o toque vira drag nativo em
+// vez de scroll. No modo Semana com as colunas abertas a tela inteira vira
+// cards draggable e a pagina simplesmente NAO rola. Em ponteiro grosso
+// (touch) o draggable e desligado; reordenar continua sendo recurso do desktop.
+const IS_COARSE_POINTER =
+  typeof window !== "undefined" &&
+  window.matchMedia("(pointer: coarse)").matches;
+
 // Preview de arraste transparente: suprime o "ghost" automatico do browser no
 // drag nativo (HTML5 DnD), deixando so o proprio item (opacity reduzida via
 // CSS, classe `is-dragging`) como feedback visual. Sem isso, o preview nativo
@@ -680,7 +689,7 @@ export default function DayLane({
         className={`kcard${card.done ? " is-done" : ""}${
           primaryLabel ? " has-label-color" : ""
         }${hasLabelBars ? " has-label-bars" : ""}${
-          weekMode ? " is-draggable" : ""
+          weekMode && !IS_COARSE_POINTER ? " is-draggable" : ""
         }${dragId === `card:${card.id}` ? " is-dragging" : ""}`}
         style={
           primaryLabel ? { "--kcard-label-color": primaryLabel.color } : undefined
@@ -688,7 +697,7 @@ export default function DayLane({
         ref={(el) => (cardRefs.current[card.id] = el)}
         role="button"
         tabIndex={0}
-        draggable={weekMode}
+        draggable={weekMode && !IS_COARSE_POINTER}
         onDragStart={(e) => onItemDragStart(e, "card", card.id)}
         onDragEnter={(e) => onItemDragEnter(e, "card", card.id)}
         onDragEnd={onItemDragEnd}
@@ -744,10 +753,10 @@ export default function DayLane({
     <button
       type="button"
       key={alarm.id}
-      className={`lane__alarm-item is-draggable${alarm.enabled ? "" : " is-off"}${
-        dragId === `alarm:${alarm.id}` ? " is-dragging" : ""
-      }`}
-      draggable
+      className={`lane__alarm-item${IS_COARSE_POINTER ? "" : " is-draggable"}${
+        alarm.enabled ? "" : " is-off"
+      }${dragId === `alarm:${alarm.id}` ? " is-dragging" : ""}`}
+      draggable={!IS_COARSE_POINTER}
       onDragStart={(e) => onItemDragStart(e, "alarm", alarm.id)}
       onDragEnter={(e) => onItemDragEnter(e, "alarm", alarm.id)}
       onDragEnd={onItemDragEnd}

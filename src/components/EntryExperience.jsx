@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 const LOGO_PATHS = [
@@ -13,6 +13,10 @@ export default function EntryExperience({ children, onComplete }) {
   const panelRef = useRef(null);
   const contentRef = useRef(null);
   const completedRef = useRef(false);
+  // Intro terminou: a moldura fixa da splash se DISSOLVE (classe is-done) e o
+  // app volta ao fluxo normal do documento. Sem isso o app viveria pra sempre
+  // dentro de uma caixa de 100dvh com overflow:hidden e NADA poderia rolar.
+  const [done, setDone] = useState(false);
 
   useLayoutEffect(() => {
     const svg = svgRef.current;
@@ -32,11 +36,18 @@ export default function EntryExperience({ children, onComplete }) {
       completedRef.current = true;
       onComplete?.();
     };
+    // Dissolve a moldura: limpa o transform inline do GSAP (que criaria um
+    // containing block pros position:fixed internos) e liga a classe is-done.
+    const finish = () => {
+      gsap.set([curtain, panel], { clearProps: "transform" });
+      setDone(true);
+    };
 
     if (reduce) {
       gsap.set([curtain, panel], { y: "0%" });
       gsap.set(content, { autoAlpha: 1 });
       complete();
+      finish();
       return undefined;
     }
 
@@ -54,11 +65,12 @@ export default function EntryExperience({ children, onComplete }) {
       path.setAttribute("stroke-dashoffset", len);
     });
 
-    const tl = gsap.timeline();
+    const tl = gsap.timeline({ onComplete: finish });
     const fallback = setTimeout(() => {
       gsap.set([curtain, panel], { y: "0%" });
       gsap.set(content, { autoAlpha: 1 });
       complete();
+      finish();
     }, 3200);
 
     tl.to(paths, {
@@ -146,7 +158,7 @@ export default function EntryExperience({ children, onComplete }) {
   }, []);
 
   return (
-    <main className="entry" aria-label="Flux Time">
+    <main className={`entry${done ? " is-done" : ""}`} aria-label="Flux Time">
       <svg
         ref={svgRef}
         viewBox="34 31 77 77"

@@ -212,14 +212,17 @@
     display: none;
   }
 
-  /* Botao de tela cheia no canto superior direito do palco, junto do "Ciclo".
-     (No desktop ele fica display:none; aqui ganha posicao e toque app-nativo.) */
+  /* Botao de tela cheia no canto superior direito. FIXED no viewport com a
+     MESMA regua vertical do hamburguer (.account-menu no layout.css:
+     top max(20px, safe-area+12px)) e mesma caixa (26px + padding 6) — os
+     dois ficam opticamente alinhados, um em cada canto. Antes era absolute
+     na .focus-stage (que nasce no padding do .app) e ficava ~12px mais alto. */
   .focus-expand {
     display: grid;
     place-items: center;
-    position: absolute;
-    top: 0;
-    right: 0;
+    position: fixed;
+    top: max(20px, calc(env(safe-area-inset-top) + 12px));
+    right: clamp(14px, 4vw, 20px);
     z-index: 5;
     padding: 6px;
     border: 0;
@@ -233,7 +236,7 @@
     transition: opacity 0.18s ease, transform 0.12s ease;
   }
   .focus-expand svg {
-    width: 22px;
+    width: 26px;
     height: auto;
   }
   .focus-expand:active {
@@ -277,10 +280,13 @@
     left: auto;
     padding-left: 0.16em;
   }
+  /* Com a barra compacta o .content reserva menos fundo (70px) — os controles
+     descem naturalmente pra zona do polegar. A margem final e proporcional a
+     tela (vh) so pra nao colar na nav em telas baixas. */
   .focus-actions {
     flex: 0 0 auto;
     width: 100%;
-    margin-bottom: clamp(18px, 4vh, 40px);
+    margin-bottom: clamp(8px, 1.8vh, 20px);
   }
   /* Linha Iniciar/Pausar + Reiniciar em METADES IGUAIS: os dois dividem a
      largura (flex:1 1 0), em vez do CTA esticar e o Reiniciar ficar no tamanho

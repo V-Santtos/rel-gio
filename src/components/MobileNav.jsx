@@ -12,28 +12,8 @@ export default function MobileNav({ items, active, onChange, hidden = false }) {
       aria-label="Modos"
     >
       <div className="mobile-nav__items">
-        {items.map(({ id, label, Icon, center }) => {
+        {items.map(({ id, label, Icon }) => {
           const isActive = active === id;
-
-          if (center) {
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`mobile-nav__item--center${isActive ? " is-active" : ""}`}
-                aria-label={label}
-                aria-current={isActive ? "page" : undefined}
-                onClick={(e) => {
-                  handleTap(e.currentTarget.querySelector(".mobile-nav__center-circle"));
-                  onChange(id);
-                }}
-              >
-                <span className="mobile-nav__center-circle" aria-hidden="true">
-                  <Icon size={22} strokeWidth={2.2} />
-                </span>
-              </button>
-            );
-          }
 
           return (
             <button
@@ -48,9 +28,10 @@ export default function MobileNav({ items, active, onChange, hidden = false }) {
               }}
             >
               <span className="mobile-nav__icon" aria-hidden="true">
-                <Icon size={22} strokeWidth={2.2} />
+                <Icon size={22} strokeWidth={2} />
               </span>
               <span className="mobile-nav__label">{label}</span>
+              <span className="mobile-nav__dot" aria-hidden="true" />
             </button>
           );
         })}

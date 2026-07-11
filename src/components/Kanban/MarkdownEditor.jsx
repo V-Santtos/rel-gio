@@ -1,10 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic } from "lucide-react";
+import {
+  Bold,
+  Italic,
+  Heading,
+  Heading1,
+  Heading2,
+  Heading3,
+  ChevronDown,
+} from "lucide-react";
+
+// Icone do botao de titulo: generico (H) fora de titulo; especifico (H1/H2/H3)
+// quando o cursor esta numa linha de titulo — feedback direto do nivel atual.
+const HEADING_ICONS = { 1: Heading1, 2: Heading2, 3: Heading3 };
 
 const editorPlaceholder = "Adicione uma descrição mais detalhada…";
 
@@ -29,12 +41,16 @@ function ToolbarButton({ active, title, children, onClick }) {
 // do card e que comita o rascunho); sai do modo edicao no blur.
 export default function MarkdownEditor({ value, onChange, onBlur }) {
   const [active, setActive] = useState({});
+  const [headingOpen, setHeadingOpen] = useState(false);
+  const headingWrapRef = useRef(null);
 
   const extensions = useMemo(
     () => [
       StarterKit.configure({
         heading: {
-          levels: [1, 2, 3, 4, 5, 6],
+          // So 3 niveis: a visualizacao (.md-rendered) so estiliza h1-h3 —
+          // h4-h6 sairiam MENORES que o texto normal (default do browser).
+          levels: [1, 2, 3],
         },
         link: {
           autolink: true,
@@ -63,8 +79,29 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
     setActive({
       bold: instance.isActive("bold"),
       italic: instance.isActive("italic"),
+      heading: instance.isActive("heading"),
+      h1: instance.isActive("heading", { level: 1 }),
+      h2: instance.isActive("heading", { level: 2 }),
+      h3: instance.isActive("heading", { level: 3 }),
     });
   };
+
+  // Fecha o menu de titulos: clique fora ou Escape.
+  useEffect(() => {
+    if (!headingOpen) return undefined;
+    const onDown = (e) => {
+      if (!headingWrapRef.current?.contains(e.target)) setHeadingOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setHeadingOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [headingOpen]);
 
   const editor = useEditor({
     extensions,
@@ -112,6 +149,65 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
         aria-label="Formatacao"
         onMouseDown={(event) => event.preventDefault()}
       >
+        <div className="mde__heading-wrap" ref={headingWrapRef}>
+          <button
+            type="button"
+            className={`mde__btn mde__btn--heading${
+              active.heading ? " is-active" : ""
+            }${headingOpen ? " is-open" : ""}`}
+            title="Título"
+            aria-label="Título"
+            aria-haspopup="menu"
+            aria-expanded={headingOpen}
+            onClick={() => setHeadingOpen((v) => !v)}
+          >
+            {(() => {
+              const level = active.h1 ? 1 : active.h2 ? 2 : active.h3 ? 3 : 0;
+              const Icon = HEADING_ICONS[level] || Heading;
+              return <Icon size={level ? 17 : 15} strokeWidth={2.4} />;
+            })()}
+            <ChevronDown size={11} strokeWidth={2.4} />
+          </button>
+          {headingOpen ? (
+            <div className="mde__heading-menu" role="menu" aria-label="Nível do título">
+              {[1, 2, 3].map((level) => (
+                <button
+                  type="button"
+                  key={level}
+                  role="menuitem"
+                  className={active[`h${level}`] ? "is-active" : ""}
+                  onClick={() => {
+                    run((chain) => chain.toggleHeading({ level }));
+                    setHeadingOpen(false);
+                  }}
+                >
+                  <span
+                    className={`mde__heading-sample mde__heading-sample--h${level}`}
+                    aria-hidden="true"
+                  >
+                    Aa
+                  </span>
+                  Título {level}
+                </button>
+              ))}
+              <button
+                type="button"
+                role="menuitem"
+                className={active.heading ? "" : "is-active"}
+                onClick={() => {
+                  run((chain) => chain.setParagraph());
+                  setHeadingOpen(false);
+                }}
+              >
+                <span className="mde__heading-sample" aria-hidden="true">
+                  Aa
+                </span>
+                Texto normal
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <span className="mde__sep" aria-hidden="true" />
         <ToolbarButton
           title="Negrito"
           active={active.bold}

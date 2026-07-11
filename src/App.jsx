@@ -145,11 +145,11 @@ const SIDEBAR_ITEMS = [
   { id: "tarefas", label: "Tarefas", Icon: ListChecks },
 ];
 
-// Bottom nav (mobile): Foco no meio (vira o circulo elevado quando ativo, que
-// e o estado inicial do app), Cronometro a esquerda e Tarefas a direita.
+// Bottom nav (mobile): barra reta compacta com 3 itens iguais (icone + label +
+// dot de ativo) — Foco no meio, Cronometro a esquerda e Tarefas a direita.
 const MOBILE_NAV_ITEMS = [
   SIDEBAR_ITEMS[1], // Cronometro
-  { ...SIDEBAR_ITEMS[0], center: true }, // Foco — FAB central fixo
+  SIDEBAR_ITEMS[0], // Foco
   SIDEBAR_ITEMS[2], // Tarefas
 ];
 

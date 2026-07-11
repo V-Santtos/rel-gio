@@ -74,6 +74,12 @@
   .account-menu__trigger.is-open {
     transform: none;
   }
+  /* Glyphs maiores no mobile (o size=20 do JSX serve ao desktop): hamburguer
+     e X escalam via CSS pra ~26px, proporcionais a linha do "Ciclo X/Y". */
+  .account-menu__trigger svg {
+    width: 26px;
+    height: 26px;
+  }
 
   /* theme-switch: atualmente nao montado (o tema vive no AccountMenu).
      Regra defensiva caso volte a ser usado solto no mobile. */

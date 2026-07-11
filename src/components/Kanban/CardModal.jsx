@@ -674,6 +674,18 @@ export default function CardModal({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlightSyntax]}
+                components={{
+                  // Link abre em nova aba e NAO borbulha pro container
+                  // "clique pra editar" (senao navegava E abria o editor).
+                  a: ({ node: _node, ...props }) => (
+                    <a
+                      {...props}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ),
+                }}
               >
                 {draft.description}
               </ReactMarkdown>

@@ -1314,6 +1314,26 @@ button.account-menu__item:focus-visible {
   position: absolute;
   inset: 0;
 }
+/* Intro concluida: a moldura da splash se DISSOLVE e devolve o app ao fluxo
+   do documento. Sem isto o app inteiro vivia dentro de uma caixa fixa de
+   100dvh com overflow:hidden e NENHUMA tela podia rolar — o estouro (ex.:
+   board de Tarefas no mobile) morria cortado na moldura, e o toque de
+   scroll nao tinha para onde ir. */
+.entry.is-done {
+  min-height: 0;
+  overflow: visible;
+  background: none;
+}
+.entry.is-done .entry__logo,
+.entry.is-done .entry__curtain {
+  display: none;
+}
+.entry.is-done .entry__panel,
+.entry.is-done .entry__content {
+  position: static;
+  inset: auto;
+  will-change: auto;
+}
 
 /* ===== Login / cadastro ===== */
 .auth-screen {
@@ -2844,7 +2864,8 @@ button.account-menu__item:focus-visible {
 .md-rendered blockquote {
   margin: 0.65em 0;
   padding: 0.08em 0 0.08em 0.95em;
-  border-left: 3px solid #ffffff;
+  /* Token, nao branco fixo: no tema claro a borda branca sumia no fundo. */
+  border-left: 3px solid var(--fg);
   color: var(--muted);
 }
 .md-rendered hr {
@@ -2951,6 +2972,13 @@ button.account-menu__item:focus-visible {
 .mde__heading-menu button:hover {
   background: var(--hover);
 }}
+.mde__heading-menu button.is-active {
+  color: var(--accent);
+}
+.mde__heading-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 .mde__heading-sample {
   color: var(--muted);
   font-family: "Oswald", system-ui, sans-serif;
@@ -3010,19 +3038,34 @@ button.account-menu__item:focus-visible {
   margin: 0.25em 0;
   min-height: 1.6em;
 }
-/* Ao DIGITAR, os titulos ficam em tamanho uniforme (sem texto gigante) — so um
-   peso/cor de cue. O tamanho real aparece na visualizacao (.md-rendered). */
+/* Ao DIGITAR, os titulos ficam em tamanho uniforme (sem texto gigante), mas o
+   MARCADOR (#, ##, ###) reaparece como indicador do nivel — o usuario sempre
+   sabe que aquela linha e um titulo e de qual nivel. O tamanho real aparece
+   so na visualizacao (.md-rendered). */
 .mde__prose h1,
 .mde__prose h2,
-.mde__prose h3,
-.mde__prose h4,
-.mde__prose h5,
-.mde__prose h6 {
+.mde__prose h3 {
   margin: 0.25em 0;
   color: var(--fg);
   font-size: 15px;
   font-weight: 700;
   line-height: 1.6;
+}
+.mde__prose h1::before,
+.mde__prose h2::before,
+.mde__prose h3::before {
+  color: var(--muted);
+  font-weight: 600;
+  user-select: none;
+}
+.mde__prose h1::before {
+  content: "# ";
+}
+.mde__prose h2::before {
+  content: "## ";
+}
+.mde__prose h3::before {
+  content: "### ";
 }
 .mde__prose ul,
 .mde__prose ol {
@@ -3052,7 +3095,7 @@ button.account-menu__item:focus-visible {
 .mde__prose blockquote {
   margin: 0.65em 0;
   padding: 0.1em 0 0.1em 0.95em;
-  border-left: 3px solid #ffffff;
+  border-left: 3px solid var(--fg);
   color: var(--muted);
 }
 .mde__prose hr {
