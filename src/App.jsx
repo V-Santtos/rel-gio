@@ -28,6 +28,7 @@ import {
   setLabels as setRuntimeLabels,
 } from "./components/Kanban/labels.js";
 import SettingsModal from "./components/SettingsModal.jsx";
+import CyclePill from "./components/CyclePill.jsx";
 import MusicPanel from "./components/MusicPanel.jsx";
 import EntryExperience from "./components/EntryExperience.jsx";
 import {
@@ -62,6 +63,8 @@ import { isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
 
 const STORAGE_KEY = "rel-gio:config";
 const AUTH_FLOW_ENABLED = true;
+// Ociosidade no Foco: apaga os controles E entra em tela cheia no mesmo instante.
+const IDLE_MS = 2500;
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -1833,30 +1836,53 @@ function TimerApp({ session, onLogout, entered }) {
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const expandMountedRef = useRef(false);
-  const autoExpandSuppressed = useRef(false);
+  const isRunningRef = useRef(isRunning);
+  isRunningRef.current = isRunning;
 
   const prefersReducedMotion = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Alterna pelo icone / Esc. Minimizar na mao suprime o auto-expand ate o
-  // proximo "Iniciar".
+  // Auto-expand so onde existe ponteiro fino. No toque nao ha hover, logo nao
+  // existe sinal passivo de "ainda estou aqui": um gatilho por ociosidade que
+  // repete viraria armadilha (minimizou -> volta sozinho, sem como segurar).
+  // No mobile a tela cheia segue manual, pelo icone.
+  const canAutoExpand = () =>
+    window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+  // Contagem de ociosidade: apaga os controles e, no MESMO instante, entra em
+  // tela cheia. Reiniciada por qualquer interacao e ao minimizar na mao.
+  const idleTimerRef = useRef(null);
+  const scheduleIdle = useCallback(() => {
+    clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      setRevealed(false);
+      if (isRunningRef.current && !expandedRef.current && canAutoExpand()) {
+        setExpanded(true);
+      }
+    }, IDLE_MS);
+  }, []);
+
+  // Alterna pelo icone / Esc. Minimizar devolve a folga cheia: a ociosidade
+  // recomeca do zero, entao nao volta pra tela cheia quase na hora.
   const toggleExpanded = () => {
-    if (expandedRef.current) autoExpandSuppressed.current = true;
     setExpanded((v) => !v);
+    setRevealed(true);
+    scheduleIdle();
   };
 
-  // Esc fecha a tela cheia (conta como minimizar manual).
+  // Esc fecha a tela cheia (mesmo caminho do icone).
   useEffect(() => {
     if (!focoExpanded) return undefined;
     const onKey = (e) => {
       if (e.key === "Escape") {
-        autoExpandSuppressed.current = true;
         setExpanded(false);
+        setRevealed(true);
+        scheduleIdle();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focoExpanded]);
+  }, [focoExpanded, scheduleIdle]);
   // Sair do Foco fecha o modo expandido.
   useEffect(() => {
     if (section !== "foco") setExpanded(false);
@@ -1910,40 +1936,36 @@ function TimerApp({ session, onLogout, entered }) {
     return () => mq.removeEventListener("change", onChange);
   }, [focoExpanded]);
 
-  // F3 - Auto-expandir ao iniciar o Pomodoro, sequenciado: espera os controles
-  // sairem e entao cresce pra tela cheia. Minimizar na mao suprime ate reiniciar.
-  useEffect(() => {
-    if (section !== "foco" || !isRunning) return undefined;
-    autoExpandSuppressed.current = false;
-    const t = setTimeout(() => {
-      if (!autoExpandSuppressed.current && !expandedRef.current) {
-        setExpanded(true);
-      }
-    }, 2800);
-    return () => clearTimeout(t);
-  }, [isRunning, section]);
-
-  // Vale no modo foco (timer rodando) E no modo tela cheia: o movimento do
-  // mouse revela os controles/icones por alguns segundos; parado, eles somem.
+  // Vale no modo foco (timer rodando) E no modo tela cheia: a interacao revela
+  // os controles/icones; parado por IDLE_MS eles somem -- e, no MESMO instante,
+  // o Foco entra em tela cheia. Tela cheia e funcao de OCIOSIDADE, nao de tempo
+  // decorrido: entra sempre que o usuario para e so sai na mao (icone/Esc).
+  // Dentro dela a interacao apenas revela o icone de minimizar, nunca recolhe.
   const revealActive = isRunning || focoExpanded;
   useEffect(() => {
     if (!revealActive) {
       setRevealed(false);
+      clearTimeout(idleTimerRef.current);
       return undefined;
     }
     setRevealed(true);
-    let hideTimer = setTimeout(() => setRevealed(false), 2500);
-    const onMove = () => {
+    scheduleIdle();
+    // pointermove/pointerdown cobrem mouse e toque; keydown cobre quem navega
+    // so pelo teclado (senao a tela cheia entraria por cima de quem esta ativo).
+    const onActivity = () => {
       setRevealed(true);
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setRevealed(false), 2500);
+      scheduleIdle();
     };
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("pointermove", onActivity);
+    window.addEventListener("pointerdown", onActivity);
+    window.addEventListener("keydown", onActivity);
     return () => {
-      clearTimeout(hideTimer);
-      window.removeEventListener("mousemove", onMove);
+      clearTimeout(idleTimerRef.current);
+      window.removeEventListener("pointermove", onActivity);
+      window.removeEventListener("pointerdown", onActivity);
+      window.removeEventListener("keydown", onActivity);
     };
-  }, [revealActive]);
+  }, [revealActive, scheduleIdle]);
 
   return (
     <>
@@ -1993,8 +2015,21 @@ function TimerApp({ session, onLogout, entered }) {
       items={MOBILE_NAV_ITEMS}
       active={section}
       onChange={setSection}
-      hidden={isRunning || focoExpanded}
+      hidden={focoExpanded}
     />
+
+    {/* Ciclo rodando fora do Foco: pilula de feedback no canto inferior
+        esquerdo. Fora do `.app` pelo mesmo motivo da MobileNav. */}
+    {timer.running && section !== "foco" ? (
+      <CyclePill
+        mode={timer.mode}
+        remaining={timer.remaining}
+        duration={timer.duration}
+        cycle={timer.cycle}
+        cycles={timer.cycles}
+        onClick={() => setSection("foco")}
+      />
+    ) : null}
 
     {alarmToast && (
       <AlarmToast

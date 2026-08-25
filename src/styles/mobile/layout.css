@@ -86,4 +86,13 @@
   .theme-switch {
     touch-action: manipulation;
   }
+
+  /* Pilula de ciclo: sobe pra cima da bottom nav (altura fechada de 78px em
+     nav.css, sem somar safe-area) -- no bottom padrao ela ficaria embaixo da
+     barra. Encosta na margem lateral do resto do layout mobile. */
+  .cycle-pill {
+    left: 16px;
+    bottom: 90px;
+    touch-action: manipulation;
+  }
 }

@@ -246,6 +246,9 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     cycles: totalCycles,
     running,
     remaining,
+    // Duracao total da fase atual — derivada do plano, sem estado novo.
+    // Serve pro calculo de progresso fora do hook (ex.: CyclePill).
+    duration: durationFor(mode, cycle - 1),
     start,
     pause,
     reset,

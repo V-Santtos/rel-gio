@@ -374,7 +374,8 @@ body {
   pointer-events: none;
 }
 .app.is-running.is-revealed .focus-actions,
-.app.is-running.is-revealed .account-menu {
+.app.is-running.is-revealed .account-menu,
+.app.is-running.is-revealed .dock {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
@@ -4597,6 +4598,111 @@ button.account-menu__item:focus-visible {
   .mtoggle__track,
   .mtoggle__knob,
   .music-row__name {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Pilula de ciclo em segundo plano — canto inferior esquerdo.
+   So aparece com o Pomodoro rodando FORA da secao Foco (dentro do
+   Foco o proprio relogio ja e o feedback). Unico canto livre: o
+   inferior direito tem o toggle de tema + toast de alarme, o
+   superior esquerdo tem o dock e o direito o menu de conta.
+   ============================================================ */
+.cycle-pill {
+  position: fixed;
+  left: clamp(16px, 2.5vw, 30px);
+  bottom: clamp(16px, 3vw, 28px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--kcard-shadow);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .cycle-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--modal-shadow);
+  }
+}
+.cycle-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Ponto da fase: accent com glow no Foco, apagado na Pausa. */
+.cycle-pill__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.cycle-pill--break .cycle-pill__dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+.cycle-pill__phase {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+/* tabular-nums: o tempo troca a cada segundo e nao pode "dancar" a largura. */
+.cycle-pill__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.cycle-pill__cycle {
+  color: var(--muted);
+}
+/* Separadores decorativos entre os tres blocos de texto. */
+.cycle-pill__time::before,
+.cycle-pill__cycle::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+/* Progresso da fase, faixa fina rente a base da pilula. */
+.cycle-pill__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--track);
+}
+.cycle-pill__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  /* 1s linear acompanha o tick do timer, sem saltos a cada segundo. */
+  transition: transform 1s linear;
+}
+.cycle-pill--break .cycle-pill__fill {
+  background: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cycle-pill,
+  .cycle-pill__fill {
     transition: none;
   }
 }
