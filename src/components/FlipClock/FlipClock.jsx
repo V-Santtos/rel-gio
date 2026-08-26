@@ -11,7 +11,15 @@ function pad(n) {
  * - showHours = true  -> HH MM SS (3 cartoes)
  * - showHours = false -> MM SS    (2 cartoes)
  */
-export default function FlipClock({ totalSeconds, showHours, onExpand, expanded, rootRef }) {
+export default function FlipClock({
+  totalSeconds,
+  showHours,
+  showSeconds = true,
+  padHours = false,
+  onExpand,
+  expanded,
+  rootRef,
+}) {
   const safe = Math.max(0, Math.floor(totalSeconds));
 
   const hours = Math.floor(safe / 3600);
@@ -20,9 +28,9 @@ export default function FlipClock({ totalSeconds, showHours, onExpand, expanded,
 
   const units = showHours
     ? [
-        { value: String(hours), label: "Horas" },
+        { value: padHours ? pad(hours) : String(hours), label: "Horas" },
         { value: pad(minutes), label: "Minutos" },
-        { value: pad(seconds), label: "Segundos" },
+        ...(showSeconds ? [{ value: pad(seconds), label: "Segundos" }] : []),
       ]
     : [
         { value: pad(Math.floor(safe / 60)), label: "Minutos" },

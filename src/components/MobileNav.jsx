@@ -11,7 +11,10 @@ export default function MobileNav({ items, active, onChange, hidden = false }) {
       className={`mobile-nav${hidden ? " mobile-nav--hidden" : ""}`}
       aria-label="Modos"
     >
-      <div className="mobile-nav__items">
+      <div
+        className="mobile-nav__items"
+        style={{ "--mobile-nav-items": items.length }}
+      >
         {items.map(({ id, label, Icon }) => {
           const isActive = active === id;
 
@@ -31,7 +34,6 @@ export default function MobileNav({ items, active, onChange, hidden = false }) {
                 <Icon size={22} strokeWidth={2} />
               </span>
               <span className="mobile-nav__label">{label}</span>
-              <span className="mobile-nav__dot" aria-hidden="true" />
             </button>
           );
         })}

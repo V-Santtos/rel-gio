@@ -14,6 +14,7 @@ import {
   Settings,
   List,
   CalendarDays,
+  Clock3,
   Plus,
   Maximize,
   Minimize,
@@ -29,6 +30,7 @@ import {
 } from "./components/Kanban/labels.js";
 import SettingsModal from "./components/SettingsModal.jsx";
 import CyclePill from "./components/CyclePill.jsx";
+import ClockSection from "./components/ClockSection.jsx";
 import MusicPanel from "./components/MusicPanel.jsx";
 import EntryExperience from "./components/EntryExperience.jsx";
 import {
@@ -47,7 +49,7 @@ import {
   startMusic,
   stopMusic,
   duckMusic,
-  setMusicPlaylist,
+  switchTrackNow,
   setMusicVolume,
 } from "./lib/music.js";
 import { syncPushSubscription } from "./lib/pushSubscription.js";
@@ -143,17 +145,19 @@ function rowFromConfig(userId, config) {
 }
 
 const SIDEBAR_ITEMS = [
+  { id: "horario", label: "Horário", Icon: Clock3 },
   { id: "foco", label: "Foco", Icon: Target },
-  { id: "cronometro", label: "Cronômetro", Icon: Timer },
   { id: "tarefas", label: "Tarefas", Icon: ListChecks },
+  { id: "cronometro", label: "Cronômetro", Icon: Timer },
 ];
 
-// Bottom nav (mobile): barra reta compacta com 3 itens iguais (icone + label +
-// dot de ativo) — Foco no meio, Cronometro a esquerda e Tarefas a direita.
+// Bottom nav (mobile): barra reta compacta com itens iguais (icone + label +
+// dot de ativo) — Horario, Foco, Tarefas e Cronometro.
 const MOBILE_NAV_ITEMS = [
-  SIDEBAR_ITEMS[1], // Cronometro
-  SIDEBAR_ITEMS[0], // Foco
+  SIDEBAR_ITEMS[0], // Horario
+  SIDEBAR_ITEMS[1], // Foco
   SIDEBAR_ITEMS[2], // Tarefas
+  SIDEBAR_ITEMS[3], // Cronometro
 ];
 
 function loadConfig() {
@@ -263,8 +267,10 @@ function FocoSection({
   onToggleExpand,
   clockRef,
   musicTracks,
-  musicEnabled,
-  onToggleMusic,
+  musicTrackId,
+  onPickTrack,
+  musicOn,
+  onToggleMusicOn,
   musicVolume,
   onMusicVolume,
 }) {
@@ -407,8 +413,10 @@ function FocoSection({
 
       <MusicPanel
         tracks={musicTracks}
-        enabled={musicEnabled}
-        onToggle={onToggleMusic}
+        trackId={musicTrackId}
+        onPickTrack={onPickTrack}
+        on={musicOn}
+        onToggleOn={onToggleMusicOn}
         volume={musicVolume}
         onVolume={onMusicVolume}
       />
@@ -1706,35 +1714,42 @@ function TimerApp({ session, onLogout, entered }) {
   }, [timer.remaining]);
 
   // ===== Musica de fundo do modo Foco =====
-  const [musicEnabled, setMusicEnabled] = useState(() => {
-    try {
-      const raw = localStorage.getItem("fluxtime.music.enabled");
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr)
-        ? arr.filter((id) => MUSIC_TRACKS.some((t) => t.id === id))
-        : [];
-    } catch {
-      return [];
-    }
+  const [musicTrackId, setMusicTrackId] = useState(() => {
+    const raw = localStorage.getItem("fluxtime.music.track");
+    return MUSIC_TRACKS.some((t) => t.id === raw) ? raw : MUSIC_TRACKS[0]?.id;
+  });
+  const [musicOn, setMusicOn] = useState(() => {
+    return localStorage.getItem("fluxtime.music.on") === "1";
   });
   const [musicVolume, setMusicVol] = useState(() => {
     const raw = Number(localStorage.getItem("fluxtime.music.volume"));
     return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.5;
   });
 
-  const enabledMusicSrcs = useMemo(
-    () =>
-      MUSIC_TRACKS.filter((t) => musicEnabled.includes(t.id)).map((t) => t.src),
-    [musicEnabled]
+  const musicSrc = useMemo(
+    () => MUSIC_TRACKS.find((t) => t.id === musicTrackId)?.src ?? null,
+    [musicTrackId]
   );
 
-  const toggleMusic = useCallback((id) => {
-    setMusicEnabled((prev) => {
-      const next = prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id];
+  // Escolher faixa: com a musica ja ligada, crossfade pra ela na hora; senao
+  // so guarda a escolha (aplica no proximo play).
+  const pickTrack = useCallback((id) => {
+    setMusicTrackId(id);
+    try {
+      localStorage.setItem("fluxtime.music.track", id);
+    } catch {
+      /* ignore */
+    }
+    const src = MUSIC_TRACKS.find((t) => t.id === id)?.src;
+    if (src) switchTrackNow(src);
+  }, []);
+
+  // Liga/desliga: play/pause explicito, na hora, com o ciclo rodando ou nao.
+  const toggleMusicOn = useCallback(() => {
+    setMusicOn((prev) => {
+      const next = !prev;
       try {
-        localStorage.setItem("fluxtime.music.enabled", JSON.stringify(next));
+        localStorage.setItem("fluxtime.music.on", next ? "1" : "0");
       } catch {
         /* ignore */
       }
@@ -1752,9 +1767,7 @@ function TimerApp({ session, onLogout, entered }) {
     }
   }, []);
 
-  const musicOnRef = useRef(false);
   const prevCycleRef = useRef(timer.cycle);
-  const prevMusicRunRef = useRef(false);
 
   // Volume inicial no motor (1x).
   useEffect(() => {
@@ -1762,60 +1775,42 @@ function TimerApp({ session, onLogout, entered }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start/stop. REGRA: a musica so DA INICIO no "Iniciar" (borda de subida do
-  // running na secao Foco). Mexer nos toggles enquanto roda apenas atualiza a
-  // rotacao (ou para, se zerar) -- NUNCA inicia playback sozinho.
+  // Toca so dentro da secao Foco, com o play/pause ligado. Reage a QUALQUER
+  // motivo de entrar/sair dessa condicao (ligar/desligar, ou navegar pra
+  // dentro/fora do Foco) -- sempre reinicia do zero (o motor nao guarda
+  // posicao). NAO reage a troca de faixa (`musicSrc` fora das deps de
+  // proposito): isso e tratado ao vivo por `pickTrack`, via crossfade, pra
+  // nao colidir reiniciando por cima.
   useEffect(() => {
-    const running = section === "foco" && timer.running;
-    const justStarted = running && !prevMusicRunRef.current;
-    prevMusicRunRef.current = running;
-
-    if (!running) {
-      if (musicOnRef.current) {
-        stopMusic();
-        musicOnRef.current = false;
-      }
-      return;
+    if (section === "foco" && musicOn) {
+      startMusic(musicSrc);
+    } else {
+      stopMusic();
     }
-    if (justStarted) {
-      if (enabledMusicSrcs.length > 0) {
-        startMusic(enabledMusicSrcs);
-        musicOnRef.current = true;
-      }
-      return;
-    }
-    // Ja rodando e os toggles mudaram:
-    if (musicOnRef.current) {
-      if (enabledMusicSrcs.length === 0) {
-        stopMusic();
-        musicOnRef.current = false;
-      } else {
-        setMusicPlaylist(enabledMusicSrcs);
-      }
-    }
-  }, [section, timer.running, enabledMusicSrcs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, musicOn]);
 
   // Virada de ciclo: a musica ZERA do inicio (nunca comeca o ciclo no meio).
+  // So dentro do Foco -- senao reativaria o audio com o usuario nas Tarefas.
   useEffect(() => {
     if (timer.cycle !== prevCycleRef.current) {
       prevCycleRef.current = timer.cycle;
-      if (musicOnRef.current && enabledMusicSrcs.length > 0) {
-        startMusic(enabledMusicSrcs);
-      }
+      if (section === "foco" && musicOn && musicSrc) startMusic(musicSrc);
     }
-  }, [timer.cycle, enabledMusicSrcs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.cycle]);
 
   // Duck: ultimos 7s de qualquer fase -> ~30% (pra ouvir tic-tac + respiro);
   // volta a 100% ao entrar na proxima fase.
   useEffect(() => {
-    if (!musicOnRef.current) return;
+    if (!musicOn) return;
     const ducking =
       section === "foco" &&
       timer.running &&
       timer.remaining >= 1 &&
       timer.remaining <= 7;
     duckMusic(ducking);
-  }, [timer.remaining, timer.running, section]);
+  }, [timer.remaining, timer.running, section, musicOn]);
 
   const stopwatch = useStopwatch();
 
@@ -1827,15 +1822,23 @@ function TimerApp({ session, onLogout, entered }) {
   // segundos e depois eles voltam a desaparecer (padrao de player de video).
   const [revealed, setRevealed] = useState(false);
 
-  // Modo tela cheia do relogio (estilo Fliqlo): o claquete cresce e enche a
-  // viewport, escondendo o resto. So existe na secao Foco. A transicao
-  // (expandir/recolher) e so escala + fade no lugar (sem deslocar).
+  // Modo tela cheia dos relogios (estilo Fliqlo): o claquete cresce e enche a
+  // viewport, escondendo o resto. Foco e Horario mantem estados separados,
+  // pois o primeiro depende do timer e o segundo e sempre o horario atual.
   const [expanded, setExpanded] = useState(false);
   const focoExpanded = section === "foco" && expanded;
   const clockElRef = useRef(null); // raiz do .flip-clock (alvo da transicao)
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const expandMountedRef = useRef(false);
+  const [clockExpanded, setClockExpanded] = useState(false);
+  const horarioExpanded = section === "horario" && clockExpanded;
+  const currentTimeClockRef = useRef(null);
+  const clockExpandedRef = useRef(clockExpanded);
+  clockExpandedRef.current = clockExpanded;
+  const clockExpandMountedRef = useRef(false);
+  const isHorarioRef = useRef(section === "horario");
+  isHorarioRef.current = section === "horario";
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
 
@@ -1856,9 +1859,9 @@ function TimerApp({ session, onLogout, entered }) {
     clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
       setRevealed(false);
-      if (isRunningRef.current && !expandedRef.current && canAutoExpand()) {
-        setExpanded(true);
-      }
+      if (!canAutoExpand()) return;
+      if (isRunningRef.current && !expandedRef.current) setExpanded(true);
+      if (isHorarioRef.current && !clockExpandedRef.current) setClockExpanded(true);
     }, IDLE_MS);
   }, []);
 
@@ -1866,6 +1869,11 @@ function TimerApp({ session, onLogout, entered }) {
   // recomeca do zero, entao nao volta pra tela cheia quase na hora.
   const toggleExpanded = () => {
     setExpanded((v) => !v);
+    setRevealed(true);
+    scheduleIdle();
+  };
+  const toggleClockExpanded = () => {
+    setClockExpanded((v) => !v);
     setRevealed(true);
     scheduleIdle();
   };
@@ -1887,6 +1895,23 @@ function TimerApp({ session, onLogout, entered }) {
   useEffect(() => {
     if (section !== "foco") setExpanded(false);
   }, [section]);
+  // Sair de Horario tambem devolve o relogio ao seu tamanho normal.
+  useEffect(() => {
+    if (section !== "horario") setClockExpanded(false);
+  }, [section]);
+
+  useEffect(() => {
+    if (!horarioExpanded) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setClockExpanded(false);
+        setRevealed(true);
+        scheduleIdle();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [horarioExpanded, scheduleIdle]);
 
   // F2/F3 - Transicao de expandir/recolher: so escala + fade, no lugar (sem
   // deslocamento). Nao roda no primeiro render -- so nas trocas.
@@ -1910,6 +1935,27 @@ function TimerApp({ session, onLogout, entered }) {
       }
     );
   }, [expanded]);
+
+  useLayoutEffect(() => {
+    const el = currentTimeClockRef.current;
+    if (!el) return;
+    if (!clockExpandMountedRef.current) {
+      clockExpandMountedRef.current = true;
+      return;
+    }
+    if (prefersReducedMotion()) return;
+    gsap.fromTo(
+      el,
+      { scale: clockExpanded ? 0.9 : 1.08, opacity: 0.25 },
+      {
+        scale: 1,
+        opacity: 1,
+        duration: 0.45,
+        ease: "power2.out",
+        clearProps: "scale,opacity",
+      }
+    );
+  }, [clockExpanded]);
 
   // Girar o celular em tela cheia: o layout dos claquetes muda via CSS
   // (empilhado <-> lado a lado); aqui so um "pop" GSAP minimo pra suavizar a
@@ -1936,12 +1982,10 @@ function TimerApp({ session, onLogout, entered }) {
     return () => mq.removeEventListener("change", onChange);
   }, [focoExpanded]);
 
-  // Vale no modo foco (timer rodando) E no modo tela cheia: a interacao revela
-  // os controles/icones; parado por IDLE_MS eles somem -- e, no MESMO instante,
-  // o Foco entra em tela cheia. Tela cheia e funcao de OCIOSIDADE, nao de tempo
-  // decorrido: entra sempre que o usuario para e so sai na mao (icone/Esc).
-  // Dentro dela a interacao apenas revela o icone de minimizar, nunca recolhe.
-  const revealActive = isRunning || focoExpanded;
+  // Vale no Foco rodando e no Horario: parado por IDLE_MS os controles somem e,
+  // no desktop, o respectivo relogio ocupa a tela. Dentro dela a interacao so
+  // revela o icone de minimizar; nunca recolhe automaticamente.
+  const revealActive = isRunning || focoExpanded || section === "horario";
   useEffect(() => {
     if (!revealActive) {
       setRevealed(false);
@@ -1972,7 +2016,9 @@ function TimerApp({ session, onLogout, entered }) {
     <div
       className={`app${isRunning ? " is-running" : ""}${
         revealActive && revealed ? " is-revealed" : ""
-      }${focoExpanded ? " is-expanded" : ""}`}
+      }${focoExpanded ? " is-expanded" : ""}${
+        horarioExpanded ? " is-clock-expanded" : ""
+      }`}
     >
       <Sidebar items={SIDEBAR_ITEMS} active={section} onChange={setSection} />
 
@@ -1992,14 +2038,22 @@ function TimerApp({ session, onLogout, entered }) {
               onToggleExpand={toggleExpanded}
               clockRef={clockElRef}
               musicTracks={MUSIC_TRACKS}
-              musicEnabled={musicEnabled}
-              onToggleMusic={toggleMusic}
+              musicTrackId={musicTrackId}
+              onPickTrack={pickTrack}
+              musicOn={musicOn}
+              onToggleMusicOn={toggleMusicOn}
               musicVolume={musicVolume}
               onMusicVolume={changeMusicVolume}
             />
           ) : null
         ) : section === "cronometro" ? (
           <CronometroSection stopwatch={stopwatch} />
+        ) : section === "horario" ? (
+          <ClockSection
+            expanded={horarioExpanded}
+            onToggleExpand={toggleClockExpanded}
+            clockRef={currentTimeClockRef}
+          />
         ) : (
           <TarefasSection userId={userId} />
         )}
@@ -2015,12 +2069,12 @@ function TimerApp({ session, onLogout, entered }) {
       items={MOBILE_NAV_ITEMS}
       active={section}
       onChange={setSection}
-      hidden={focoExpanded}
+      hidden={focoExpanded || horarioExpanded}
     />
 
     {/* Ciclo rodando fora do Foco: pilula de feedback no canto inferior
         esquerdo. Fora do `.app` pelo mesmo motivo da MobileNav. */}
-    {timer.running && section !== "foco" ? (
+    {timer.running && section !== "foco" && !horarioExpanded ? (
       <CyclePill
         mode={timer.mode}
         remaining={timer.remaining}

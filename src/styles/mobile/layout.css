@@ -87,12 +87,11 @@
     touch-action: manipulation;
   }
 
-  /* Pilula de ciclo: sobe pra cima da bottom nav (altura fechada de 78px em
-     nav.css, sem somar safe-area) -- no bottom padrao ela ficaria embaixo da
-     barra. Encosta na margem lateral do resto do layout mobile. */
+  /* Pilula de ciclo: permanece acima do dock flutuante e acompanha a safe area
+     sem encostar no home indicator. */
   .cycle-pill {
     left: 16px;
-    bottom: 90px;
+    bottom: max(96px, calc(86px + env(safe-area-inset-bottom)));
     touch-action: manipulation;
   }
 }

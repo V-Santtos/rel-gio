@@ -12,8 +12,9 @@
  *                       (fade in/out)   (duck 7s)   (volume)
  *
  * Regras (combinadas com o usuario):
- * - Toggle define a ROTACAO: 1 faixa -> loop nela mesma (crossfade no fim);
- *   2+ -> toca uma apos a outra e repete o conjunto, sempre com crossfade.
+ * - Selecao UNICA: uma faixa por vez, em loop (crossfade no proprio fim).
+ *   Trocar de faixa com o play/pause ligado crossfada pra ela na hora
+ *   (`switchTrackNow`); com a musica desligada so guarda a escolha.
  * - A musica toca o CICLO inteiro (foco + break) e ZERA a cada novo ciclo.
  * - DUCK: nos ultimos 7s de cada fase a musica cai pra ~30% (pra ouvir o
  *   tic-tac e o respiro) e volta a 100% ao entrar na proxima fase.
@@ -122,8 +123,13 @@ function build() {
   elA = new Audio();
   elB = new Audio();
   [elA, elB].forEach((el) => {
-    el.preload = "auto";
+    // "metadata" (nao "auto"): baixa so o cabecalho (duracao) na hora do
+    // preloadNext(); o corpo do arquivo vem via HTTP Range conforme toca.
+    // Assim o consumo de rede e proporcional ao que e OUVIDO, nao ao
+    // tamanho do arquivo -- faixa de 1h+ passa a ser viavel sem cortar.
+    el.preload = "metadata";
     el.loop = false;
+    el.crossOrigin = "anonymous";
     el.addEventListener("timeupdate", onTimeUpdate);
   });
 
@@ -166,25 +172,16 @@ export function getMusicVolume() {
 }
 
 /**
- * Atualiza a rotacao ao vivo (toggles mudados durante a sessao). A faixa atual
- * continua ate o proximo crossfade, que ja usa a lista nova. Lista vazia para.
+ * (Re)inicia do ZERO: carrega a faixa selecionada e entra com fade-in. Usado
+ * no play/pause, no start do timer e a cada virada de ciclo.
  */
-export function setMusicPlaylist(srcs) {
-  playlist = Array.isArray(srcs) ? srcs.slice() : [];
-  if (playing && playlist.length === 0) stopMusic();
-}
-
-/**
- * (Re)inicia do ZERO: carrega a 1a faixa habilitada e entra com fade-in. Usado
- * no start do timer e a cada virada de ciclo.
- */
-export function startMusic(srcs) {
+export function startMusic(src) {
   const c = getCtx();
   if (!c) return;
   if (c.state === "suspended") c.resume();
   build();
 
-  playlist = Array.isArray(srcs) ? srcs.slice() : [];
+  playlist = src ? [src] : [];
   if (playlist.length === 0) return;
 
   const now = c.currentTime;
@@ -216,11 +213,14 @@ export function startMusic(srcs) {
   crossfading = false;
 }
 
-function startCrossfade() {
-  if (!playlist.length) return;
+/**
+ * Crossfade para `nextSrc` no elemento inativo. Usado tanto pelo loop
+ * automatico (fim de faixa se aproximando) quanto pela troca manual sob
+ * demanda (usuario escolhe outra faixa no seletor enquanto ja esta tocando).
+ */
+function crossfadeTo(nextSrc) {
+  if (!nextSrc) return;
   crossfading = true;
-
-  const nextSrc = nextSrcOf(currentSrc);
 
   const from = active;
   const to = active === elA ? elB : elA;
@@ -240,7 +240,10 @@ function startCrossfade() {
   const p = to.play();
   if (p && p.catch) p.catch(() => {});
 
-  const dur = Math.min(CROSSFADE, Math.max(1, from.duration - from.currentTime));
+  const dur = Math.min(
+    CROSSFADE,
+    Math.max(1, (from.duration || CROSSFADE) - (from.currentTime || 0))
+  );
   ramp(toGain.gain, 1, dur);
   ramp(fromGain.gain, 0, dur);
 
@@ -251,6 +254,22 @@ function startCrossfade() {
     if (active !== from) from.pause();
     crossfading = false;
   }, dur * 1000 + 50);
+}
+
+function startCrossfade() {
+  if (!playlist.length) return;
+  crossfadeTo(nextSrcOf(currentSrc));
+}
+
+/**
+ * Troca para `src` AGORA (usuario escolheu outra faixa no seletor). Se nao
+ * esta tocando ou ja e a faixa ativa, so guarda a escolha -- sem crossfade
+ * a vazio.
+ */
+export function switchTrackNow(src) {
+  playlist = src ? [src] : [];
+  if (!playing || !src || src === currentSrc) return;
+  crossfadeTo(src);
 }
 
 /** Abaixa (on) pra ~30% nos ultimos 7s; volta a 100% (off) na fase seguinte. */

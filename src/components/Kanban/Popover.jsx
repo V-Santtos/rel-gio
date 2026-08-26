@@ -17,14 +17,26 @@ export default function Popover({ anchorRef, onClose, children, width = 280, cla
     if (!a) return;
     const r = a.getBoundingClientRect();
     const margin = 8;
+    const gap = 6;
     let left = r.left;
-    let top = r.bottom + 6;
     if (left + width + margin > window.innerWidth) {
       left = window.innerWidth - width - margin;
     }
     if (left < margin) left = margin;
-    const maxHeight = Math.max(240, window.innerHeight - top - margin);
-    setPos({ top, left, maxHeight });
+
+    // Abre pra baixo por padrao; SO vira pra cima se faltar espaco embaixo E
+    // sobrar mais espaco em cima -- senao o popover nasce ultrapassando a
+    // borda da janela (position:fixed nao tem pagina pra rolar ate ele).
+    const spaceBelow = window.innerHeight - r.bottom - gap - margin;
+    const spaceAbove = r.top - gap - margin;
+    const openUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(160, openUp ? spaceAbove : spaceBelow);
+
+    if (openUp) {
+      setPos({ bottom: window.innerHeight - r.top + gap, left, maxHeight, openUp: true });
+    } else {
+      setPos({ top: r.bottom + gap, left, maxHeight, openUp: false });
+    }
   };
 
   useLayoutEffect(() => {
@@ -43,13 +55,14 @@ export default function Popover({ anchorRef, onClose, children, width = 280, cla
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Entrada (GSAP) quando ja posicionado.
+  // Entrada (GSAP) quando ja posicionado. Desliza a partir do gatilho: de
+  // cima pra baixo no caso normal, de baixo pra cima quando `openUp`.
   useLayoutEffect(() => {
     if (!ref.current || !pos) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     gsap.fromTo(
       ref.current,
-      { opacity: 0, y: -6, scale: 0.98 },
+      { opacity: 0, y: pos.openUp ? 6 : -6, scale: 0.98 },
       { opacity: 1, y: 0, scale: 1, duration: reduce ? 0 : 0.18, ease: "power2.out" }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,12 +85,28 @@ export default function Popover({ anchorRef, onClose, children, width = 280, cla
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
+  // Esc fecha (beneficia todo consumidor deste componente compartilhado).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose]);
+
   if (!pos) return null;
   return createPortal(
     <div
       ref={ref}
       className={`kpop ${className}`}
-      style={{ top: pos.top, left: pos.left, width, maxHeight: pos.maxHeight }}
+      style={{
+        top: pos.openUp ? undefined : pos.top,
+        bottom: pos.openUp ? pos.bottom : undefined,
+        left: pos.left,
+        width,
+        maxHeight: pos.maxHeight,
+      }}
       role="dialog"
     >
       {children}

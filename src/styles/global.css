@@ -656,6 +656,35 @@ button.account-menu__item:focus-visible {
   place-items: center;
   width: 100%;
 }
+.clock-section {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+.clock-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: clamp(18px, 3vh, 32px);
+}
+/* No tamanho normal a data contextualiza o relogio; em tela cheia fica apenas
+   a hora, como um relogio de mesa sem distracoes. */
+.clock-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(11px, 1.3vw, 14px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+/* No desktop o controle de expandir vive no ultimo claquete. Esta versao e
+   exibida apenas no mobile, onde o alvo de toque fica livre no canto da tela. */
+.clock-expand {
+  display: none;
+}
 /* Botao de tela cheia no nivel do palco: so existe no mobile (timer.css o
    mostra/posiciona). No desktop fica escondido — la o botao vive no claquete. */
 .focus-expand {
@@ -782,6 +811,54 @@ button.account-menu__item:focus-visible {
   opacity: 1;
 }
 .app.is-expanded .flip-unit__action svg {
+  width: calc(var(--fit) * 0.075);
+}
+
+/* ===== Horario em tela cheia =====
+   Compartilha a escala do claquete do Foco, mas nao herda as regras daquele
+   modo: esta secao nao tem ciclo, controles ou timer para esconder. */
+.app.is-clock-expanded .dock,
+.app.is-clock-expanded .account-menu {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.app.is-clock-expanded:not(.is-revealed) {
+  cursor: none;
+}
+.app.is-clock-expanded .clock-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--bg);
+}
+.app.is-clock-expanded .clock-date,
+.app.is-clock-expanded .flip-cell__label {
+  display: none;
+}
+.app.is-clock-expanded .flip-clock {
+  --fit: min(40vw, 78vh);
+  --unit-w: var(--fit);
+  --unit-h: calc(var(--fit) * 1.06);
+  --unit-font: calc(var(--fit) * 0.95);
+  --card-gap: calc(var(--fit) * 0.085);
+  --card-radius: calc(var(--fit) * 0.09);
+}
+.app.is-clock-expanded .flip-unit__action {
+  top: calc(var(--fit) * 0.06);
+  right: calc(var(--fit) * 0.06);
+  bottom: auto;
+  opacity: 0.18;
+  transition: opacity 0.4s ease, transform 0.18s ease;
+}
+.app.is-clock-expanded.is-revealed .flip-unit__action,
+.app.is-clock-expanded .flip-unit__action:hover,
+.app.is-clock-expanded .flip-unit__action:focus-visible {
+  opacity: 1;
+}
+.app.is-clock-expanded .flip-unit__action svg {
   width: calc(var(--fit) * 0.075);
 }
 /* "Configurações" segue o padrão ghost dos controles; gira a engrenagem no hover */
@@ -4373,148 +4450,170 @@ button.account-menu__item:focus-visible {
 }}
 
 /* ============================================================
-   Musica de fundo do modo Foco (DESKTOP) — painel + toggle.
-   Toggle na identidade do app: track slate fosco, ligado brilha
-   no accent vermelho. Esconde no mobile (so desktop sobe musica).
+   Musica de fundo do modo Foco — mini player.
+   Uma unica superficie reune play/pause, faixa atual e volume. O seletor de
+   faixa abre num modal central, sem depender do espaco ao redor do player.
    ============================================================ */
 .music-panel {
   position: relative;
   z-index: 2;
-  width: min(600px, 92vw);
-  margin: clamp(16px, 3vh, 32px) auto 0;
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  transition: opacity 0.4s ease;
-}
-.music-panel__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.music-panel__title {
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
-  padding: 0 6px 2px;
-}
-.music-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  width: min(380px, calc(100vw - 32px));
+  min-height: 66px;
+  margin: clamp(18px, 2.4vh, 28px) auto 0;
+  padding: 6px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 28px;
-  row-gap: 2px;
-}
-.music-row {
-  display: flex;
+  grid-template-columns: 52px minmax(0, 1fr) 1px 44px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  transition: background 0.25s ease;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--modal-bg) 82%, transparent);
+  box-shadow: var(--modal-rim), 0 14px 34px -28px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.4s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
-.music-row:hover {
-  background: var(--hover);
-}
-.music-row__name {
-  font-size: 0.95rem;
-  color: var(--muted);
-  font-weight: 500;
-  transition: color 0.25s ease;
-}
-.music-row[data-on="true"] .music-row__name {
-  color: var(--fg);
+.music-panel[data-on="true"] {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  box-shadow: var(--modal-rim), 0 14px 36px -25px var(--accent-glow);
 }
 
-/* Toggle dark-vermelho */
-.mtoggle {
-  background: none;
-  border: 0;
-  padding: 4px;
-  cursor: pointer;
-  display: inline-flex;
-  flex: none;
-}
-.mtoggle__track {
-  position: relative;
-  width: 46px;
-  height: 26px;
-  border-radius: 999px;
-  background: var(--lane-bg);
+/* Transporte de midia: botao, nao switch. */
+.music-player__play {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
   border: 1px solid var(--border);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-}
-.mtoggle__knob {
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #3c3f46, #25272c);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: transform 0.28s cubic-bezier(0.34, 1.2, 0.4, 1), background 0.3s ease;
+  background: var(--lane-bg);
+  color: var(--fg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 7px 18px -14px rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.25s ease, border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
-/* ranhuras (pega tatil) */
-.mtoggle__knob::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 6px;
-  height: 8px;
-  border-left: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-right: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1px;
-}
-.mtoggle[data-on="true"] .mtoggle__track {
-  background: var(--accent-grad);
+.music-player__play[data-on="true"] {
   border-color: transparent;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 14px var(--accent-glow);
+  background: var(--accent-grad);
+  color: var(--accent-fg);
+  box-shadow: 0 9px 24px -10px var(--accent-glow);
 }
-.mtoggle[data-on="true"] .mtoggle__knob {
-  transform: translateY(-50%) translateX(20px);
-  background: linear-gradient(180deg, #ffffff, #eef0f3);
+.music-player__play:active {
+  transform: scale(0.94);
 }
-.mtoggle[data-on="true"] .mtoggle__knob::before {
-  border-left-color: rgba(0, 0, 0, 0.18);
-  border-right-color: rgba(0, 0, 0, 0.18);
+@media (hover: hover) {
+  .music-player__play:hover {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+    transform: translateY(-1px);
+  }
 }
-.mtoggle:focus-visible {
-  outline: none;
-}
-.mtoggle:focus-visible .mtoggle__track {
+.music-player__play:focus-visible,
+.music-pick:focus-visible,
+.music-vol-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-/* Volume da musica — coluna VERTICAL com icones (volume no topo, mudo embaixo) */
-.music-vol {
-  flex: none;
+/* A area central inteira escolhe a faixa; duas linhas resolvem a hierarquia
+   sem o rotulo MÚSICA solto do layout anterior. */
+.music-pick {
+  min-width: 0;
+  height: 52px;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+@media (hover: hover) {
+  .music-pick:hover {
+    background: var(--hover);
+  }
+}
+.music-pick__copy {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0 2px;
+  gap: 3px;
 }
-.music-vol__icon {
+.music-pick__meta {
+  overflow: hidden;
   color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.music-pick__label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 750;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-pick__chevron {
   flex: none;
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+@media (hover: hover) {
+  .music-pick:hover .music-pick__chevron {
+    color: var(--fg);
+    transform: translateY(1px);
+  }
+}
+.music-player__divider {
+  width: 1px;
+  height: 30px;
+  background: var(--border);
+}
+
+/* Icone de volume -- abre apenas o mini popover com o slider. */
+.music-vol-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+@media (hover: hover) {
+  .music-vol-btn:hover {
+    color: var(--fg);
+    background: var(--hover);
+  }
+}
+/* Conteudo do popover de volume: slider horizontal + mudo. */
+.music-vol-pop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px;
 }
 .music-vol__mute {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   padding: 4px;
   border: 0;
   border-radius: 8px;
@@ -4523,9 +4622,11 @@ button.account-menu__item:focus-visible {
   cursor: pointer;
   transition: color 0.2s ease, background 0.2s ease;
 }
-.music-vol__mute:hover {
-  color: var(--fg);
-  background: var(--hover);
+@media (hover: hover) {
+  .music-vol__mute:hover {
+    color: var(--fg);
+    background: var(--hover);
+  }
 }
 .music-vol__mute[data-muted="true"] {
   color: var(--accent);
@@ -4534,20 +4635,19 @@ button.account-menu__item:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.music-vol__range {
+.music-vol__range--h {
   -webkit-appearance: none;
   appearance: none;
-  writing-mode: vertical-lr;
-  direction: rtl; /* topo = volume maximo */
-  width: 5px;
-  height: 124px;
+  flex: 1;
+  width: 100%;
+  height: 5px;
   border-radius: 999px;
   background: var(--lane-bg);
   box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
   outline: none;
   cursor: pointer;
 }
-.music-vol__range::-webkit-slider-thumb {
+.music-vol__range--h::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 15px;
@@ -4557,7 +4657,7 @@ button.account-menu__item:focus-visible {
   box-shadow: 0 0 8px var(--accent-glow);
   cursor: pointer;
 }
-.music-vol__range::-moz-range-thumb {
+.music-vol__range--h::-moz-range-thumb {
   width: 15px;
   height: 15px;
   border: 0;
@@ -4566,9 +4666,187 @@ button.account-menu__item:focus-visible {
   box-shadow: 0 0 8px var(--accent-glow);
   cursor: pointer;
 }
-.music-vol__range:focus-visible {
+.music-vol__range--h:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* Modal central de escolha de faixa. */
+.musicmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 40px);
+}
+.musicmodal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(3px);
+}
+.musicmodal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  max-height: min(640px, calc(100dvh - 48px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  border: 1px solid var(--modal-border);
+  border-radius: 22px;
+  background: var(--modal-bg);
+  box-shadow: var(--modal-shadow), var(--modal-rim);
+}
+.musicmodal__panel:focus {
+  outline: none;
+}
+.musicmodal__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.musicmodal__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.musicmodal__title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.musicmodal__description {
+  margin: 8px 42px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.musicmodal__close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+@media (hover: hover) {
+  .musicmodal__close:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+}
+.musicmodal__close:focus-visible,
+.music-track-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.musicmodal__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.music-track-item {
+  min-width: 0;
+  min-height: 76px;
+  padding: 11px 12px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--field-border);
+  border-radius: 14px;
+  background: var(--field-bg);
+  color: var(--fg);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.2s ease, background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.music-track-item[data-active="true"] {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--field-border));
+  background: color-mix(in srgb, var(--accent) 9%, var(--field-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+@media (hover: hover) {
+  .music-track-item:hover {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--field-border));
+    background: var(--hover);
+    transform: translateY(-1px);
+  }
+}
+.music-track-item__art {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--lane-bg);
+  color: var(--muted);
+}
+.music-track-item[data-active="true"] .music-track-item__art {
+  border-color: transparent;
+  background: var(--accent-grad);
+  color: var(--accent-fg);
+  box-shadow: 0 8px 20px -12px var(--accent-glow);
+}
+.music-track-item__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.music-track-item__name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-track-item__hint {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-track-item[data-active="true"] .music-track-item__hint {
+  color: var(--accent);
+}
+.music-track-item__check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(0.75);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.music-track-item__check[data-visible="true"] {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Esconde/revela junto com os controles no modo foco. */
@@ -4586,18 +4864,13 @@ button.account-menu__item:focus-visible {
   pointer-events: none !important;
 }
 
-/* So desktop sobe musica -> esconde no mobile. */
-@media (max-width: 768px) {
-  .music-panel {
-    display: none !important;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .music-panel,
-  .music-row,
-  .mtoggle__track,
-  .mtoggle__knob,
-  .music-row__name {
+  .music-player__play,
+  .music-pick,
+  .music-vol-btn,
+  .music-track-item,
+  .music-track-item__check {
     transition: none;
   }
 }
@@ -4612,7 +4885,7 @@ button.account-menu__item:focus-visible {
 .cycle-pill {
   position: fixed;
   left: clamp(16px, 2.5vw, 30px);
-  bottom: clamp(16px, 3vw, 28px);
+  bottom: clamp(72px, 8vw, 84px);
   z-index: 60;
   display: flex;
   align-items: center;

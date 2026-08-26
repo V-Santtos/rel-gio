@@ -217,7 +217,8 @@
      top max(20px, safe-area+12px)) e mesma caixa (26px + padding 6) — os
      dois ficam opticamente alinhados, um em cada canto. Antes era absolute
      na .focus-stage (que nasce no padding do .app) e ficava ~12px mais alto. */
-  .focus-expand {
+  .focus-expand,
+  .clock-expand {
     display: grid;
     place-items: center;
     position: fixed;
@@ -235,21 +236,25 @@
     touch-action: manipulation;
     transition: opacity 0.18s ease, transform 0.12s ease;
   }
-  .focus-expand svg {
+  .focus-expand svg,
+  .clock-expand svg {
     width: 26px;
     height: auto;
   }
-  .focus-expand:active {
+  .focus-expand:active,
+  .clock-expand:active {
     transform: scale(0.9);
   }
-  .focus-expand:focus-visible {
+  .focus-expand:focus-visible,
+  .clock-expand:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 10px;
     opacity: 0.9;
   }
   /* Em tela cheia o palco e fixed/inset:0 -> respeita o notch nas pontas. */
-  .app.is-expanded .focus-expand {
+  .app.is-expanded .focus-expand,
+  .app.is-clock-expanded .clock-expand {
     top: max(10px, env(safe-area-inset-top));
     right: max(10px, env(safe-area-inset-right));
   }
@@ -287,6 +292,54 @@
     flex: 0 0 auto;
     width: 100%;
     margin-bottom: clamp(8px, 1.8vh, 20px);
+  }
+  /* Mini player mais compacto e centralizado, sem perder os alvos de toque. */
+  .music-panel {
+    width: min(100%, 320px);
+    min-height: 62px;
+    margin-top: clamp(8px, 1.5vh, 16px);
+    margin-right: auto;
+    margin-left: auto;
+    grid-template-columns: 48px minmax(0, 1fr) 1px 44px;
+    padding: 6px;
+  }
+  .music-player__play {
+    width: 48px;
+    height: 48px;
+  }
+  .music-pick {
+    height: 48px;
+    padding-left: 10px;
+  }
+  .music-pick__meta {
+    font-size: 9.5px;
+  }
+  .music-pick__label {
+    font-size: 14px;
+  }
+
+  /* A lista vira uma coluna e continua centralizada, respeitando notch e
+     home indicator sem se transformar num dropdown preso ao player. */
+  .musicmodal {
+    padding: max(16px, env(safe-area-inset-top)) 14px
+      max(16px, env(safe-area-inset-bottom));
+  }
+  .musicmodal__panel {
+    width: 100%;
+    max-height: calc(
+      100dvh - max(32px, env(safe-area-inset-top)) - max(32px, env(safe-area-inset-bottom))
+    );
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  .musicmodal__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .music-track-item {
+    min-height: 68px;
+    grid-template-columns: 42px minmax(0, 1fr) 24px;
   }
   /* Linha Iniciar/Pausar + Reiniciar em METADES IGUAIS: os dois dividem a
      largura (flex:1 1 0), em vez do CTA esticar e o Reiniciar ficar no tamanho
@@ -333,6 +386,9 @@
   .app.is-expanded .flip-clock--hours {
     --fit: min(70vw, 28vh);
   }
+  .app.is-clock-expanded .flip-clock {
+    --fit: min(86vw, 42vh);
+  }
 }
 
 /* Paisagem (celular deitado, viewport baixa): claquetes LADO A LADO preenchendo
@@ -345,5 +401,9 @@
   }
   .app.is-expanded .flip-clock--hours {
     --fit: min(30vw, 82vh);
+  }
+  .app.is-clock-expanded .flip-clock {
+    flex-direction: row;
+    --fit: min(44vw, 82vh);
   }
 }
