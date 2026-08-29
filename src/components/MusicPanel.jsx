@@ -13,6 +13,7 @@ export default function MusicPanel({
   trackId,
   onPickTrack,
   on,
+  promptMusic,
   onToggleOn,
   volume,
   onVolume,
@@ -42,6 +43,7 @@ export default function MusicPanel({
         type="button"
         className="music-player__play"
         data-on={on}
+        data-prompt={promptMusic}
         aria-pressed={on}
         aria-label={on ? "Pausar música" : "Tocar música"}
         onClick={onToggleOn}

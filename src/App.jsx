@@ -418,6 +418,7 @@ function FocoSection({
         trackId={musicTrackId}
         onPickTrack={onPickTrack}
         on={musicOn}
+        promptMusic={running && !musicOn}
         onToggleOn={onToggleMusicOn}
         volume={musicVolume}
         onVolume={onMusicVolume}
@@ -1743,7 +1744,18 @@ function TimerApp({ session, onLogout, entered }) {
     [config.cycleTimes]
   );
 
-  const timer = useTimer({ plan, onPhaseEnd: playPhaseEnd });
+  // O motor do timer sabe exatamente quando a sessão inteira termina (último
+  // foco em sessões com vários ciclos, ou o break na sessão de um ciclo).
+  // Ligue esse evento ao áudio, para que a música não sobreviva ao ciclo.
+  const handleSessionEnd = useCallback(() => {
+    stopMusic();
+  }, []);
+
+  const timer = useTimer({
+    plan,
+    onPhaseEnd: playPhaseEnd,
+    onSessionEnd: handleSessionEnd,
+  });
 
   // Tic-tac sutil nos ultimos 7s de cada bloco (foco e break). So quando rodando;
   // dispara a cada mudanca de segundo (7..1), e o chime fecha no 0.
