@@ -604,8 +604,8 @@ export default function CardModal({
                   type="button"
                   key={id}
                   className={`cardmodal__label${dragLabelId === id ? " is-dragging" : ""}`}
-                  style={{ background: l.color }}
-                  title={l.name || "Etiqueta"}
+                  style={{ "--label-color": l.color }}
+                  title={l.name || "Sem nome"}
                   draggable={labels.length > 1}
                   onDragStart={(e) => {
                     setDragLabelId(id);
@@ -628,7 +628,8 @@ export default function CardModal({
                   onDragEnd={() => setDragLabelId(null)}
                   onClick={() => setMenu(menu === "labels" ? null : "labels")}
                 >
-                  {l.name ? <span>{l.name}</span> : null}
+                  <i aria-hidden="true" />
+                  <span>{l.name || "Sem nome"}</span>
                 </button>
               );
             })}

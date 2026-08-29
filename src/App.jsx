@@ -594,12 +594,24 @@ function TarefasSection({ userId }) {
   const flipState = useRef(null);
   const lanesAnimated = useRef(false);
   const pendingLaneAnimation = useRef(null);
+  // Uma alteração de cartão salva a tarefa e recria suas relações de etiqueta.
+  // Sem fila, duas ações rápidas podiam apagar/inserir essas relações ao mesmo
+  // tempo e disputar a chave composta (task_id, label_id) no Supabase.
+  const cardSyncQueue = useRef(new Map());
+  const syncErrorTimer = useRef(null);
   const remoteEnabled = Boolean(supabase && userId);
 
   const reportSyncError = (message, error) => {
     console.error(message, error);
     setSyncError(message);
+    window.clearTimeout(syncErrorTimer.current);
+    syncErrorTimer.current = window.setTimeout(() => setSyncError(""), 6000);
   };
+
+  useEffect(
+    () => () => window.clearTimeout(syncErrorTimer.current),
+    []
+  );
 
   useEffect(() => {
     if (!remoteEnabled) {
@@ -931,7 +943,7 @@ function TarefasSection({ userId }) {
     }
   };
 
-  const syncCard = async (laneId, card) => {
+  const syncCardNow = async (laneId, card) => {
     if (!remoteEnabled) return;
     const { error: taskError } = await supabase
       .from("tasks")
@@ -1019,6 +1031,25 @@ function TarefasSection({ userId }) {
     if (itemError) {
       reportSyncError("Nao consegui salvar os itens do checklist.", itemError);
     }
+  };
+
+  // Mantém as gravações de CADA cartão em sequência. Cartões diferentes ainda
+  // sincronizam em paralelo, mas um mesmo cartão jamais recria etiquetas duas
+  // vezes ao mesmo tempo.
+  const syncCard = (laneId, card) => {
+    if (!remoteEnabled) return Promise.resolve();
+    const previous = cardSyncQueue.current.get(card.id) || Promise.resolve();
+    const queued = previous
+      .catch(() => undefined)
+      .then(() => syncCardNow(laneId, card));
+
+    cardSyncQueue.current.set(card.id, queued);
+    queued.finally(() => {
+      if (cardSyncQueue.current.get(card.id) === queued) {
+        cardSyncQueue.current.delete(card.id);
+      }
+    });
+    return queued;
   };
 
   const persistCard = (laneId, nextCard) => {
@@ -1414,7 +1445,14 @@ function TarefasSection({ userId }) {
         </div>
       </div>
       <div className="tarefas__lanes" ref={boardRef}>
-      {syncError ? <p className="sync-status sync-status--error">{syncError}</p> : null}
+      {syncError ? (
+        <div className="sync-status sync-status--error" role="status">
+          <span>{syncError}</span>
+          <button type="button" onClick={() => setSyncError("")} aria-label="Fechar aviso">
+            ×
+          </button>
+        </div>
+      ) : null}
       {boardReady ? visibleLanes.map((lane) => (
         <DayLane
           key={lane.id}
@@ -1746,16 +1784,18 @@ function TimerApp({ session, onLogout, entered }) {
 
   // Liga/desliga: play/pause explicito, na hora, com o ciclo rodando ou nao.
   const toggleMusicOn = useCallback(() => {
-    setMusicOn((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("fluxtime.music.on", next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
+    // Precisa acontecer diretamente no gesto do botao. Se deixarmos apenas o
+    // useEffect chamar startMusic(), navegadores podem manter o AudioContext
+    // suspenso quando o Pomodoro ainda nao foi iniciado.
+    if (!musicOn) primeMusic();
+    const next = !musicOn;
+    setMusicOn(next);
+    try {
+      localStorage.setItem("fluxtime.music.on", next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [musicOn]);
 
   const changeMusicVolume = useCallback((v) => {
     setMusicVol(v);

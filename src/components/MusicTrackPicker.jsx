@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
-import { Check, Music2, X } from "lucide-react";
+import { AudioLines, Check, X } from "lucide-react";
 
 /**
  * Modal de selecao unica das faixas. Centralizado para nao depender do espaco
@@ -144,13 +144,11 @@ export default function MusicTrackPicker({ tracks, selectedId, onSelect, onClose
                 onClick={() => choose(track.id)}
               >
                 <span className="music-track-item__art" aria-hidden="true">
-                  <Music2 size={18} strokeWidth={2.2} />
+                  <AudioLines size={19} strokeWidth={2.15} />
                 </span>
                 <span className="music-track-item__copy">
                   <span className="music-track-item__name">{track.title}</span>
-                  <span className="music-track-item__hint">
-                    {active ? "Selecionada" : "Faixa de foco"}
-                  </span>
+                  <span className="music-track-item__hint">{track.hint}</span>
                 </span>
                 <span className="music-track-item__check" data-visible={active} aria-hidden="true">
                   <Check size={15} strokeWidth={2.7} />

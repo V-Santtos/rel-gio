@@ -20,15 +20,46 @@
  *   tic-tac e o respiro) e volta a 100% ao entrar na proxima fase.
  */
 
-const BASE = import.meta.env.BASE_URL;
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+const MUSIC_BASE = `${SUPABASE_URL}/storage/v1/object/public/music/`;
 
 export const MUSIC_TRACKS = [
-  { id: "slow-jazz-1", title: "Slow Jazz I", src: `${BASE}sounds/music/slow-jazz-1.mp3` },
-  { id: "slow-jazz-2", title: "Slow Jazz II", src: `${BASE}sounds/music/slow-jazz-2.mp3` },
-  { id: "gamma-40hz", title: "Gamma 40 Hz", src: `${BASE}sounds/music/gamma-40hz.mp3` },
-  { id: "432-528hz", title: "432 / 528 Hz", src: `${BASE}sounds/music/432-528hz.mp3` },
-  { id: "memory-music", title: "Memory Music", src: `${BASE}sounds/music/memory-music.mp3` },
-  { id: "energy-sync", title: "Energy Sync", src: `${BASE}sounds/music/energy-sync.mp3` },
+  {
+    id: "nervous-system-regulation-999hz",
+    title: "Neural Calm",
+    hint: "999 Hz",
+    src: `${MUSIC_BASE}nervous-system-regulation-999hz.mp3`,
+  },
+  {
+    id: "new-reality",
+    title: "Reality Shift",
+    hint: "Ambient",
+    src: `${MUSIC_BASE}new-reality.mp3`,
+  },
+  {
+    id: "nervous-system",
+    title: "Gentle Reset",
+    hint: "Calmante",
+    src: `${MUSIC_BASE}nervous-system.mp3`,
+  },
+  {
+    id: "mental-boost-40hz",
+    title: "Gamma Focus",
+    hint: "40 Hz",
+    src: `${MUSIC_BASE}mental-boost-40hz.mp3`,
+  },
+  {
+    id: "true-love-abundance",
+    title: "Abundant Heart",
+    hint: "Harmônica",
+    src: `${MUSIC_BASE}true-love-abundance.mp3`,
+  },
+  {
+    id: "background-music",
+    title: "Quiet Flow",
+    hint: "Suave",
+    src: `${MUSIC_BASE}background-music.mp3`,
+  },
 ];
 
 // Tempos (segundos)
