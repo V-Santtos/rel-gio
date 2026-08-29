@@ -24,9 +24,18 @@ const splitTime = (t) => {
   return { h, m };
 };
 
-// directEdit=true: aberto diretamente pelo item inline (sem lista por tras).
+// directEdit=true: aberto diretamente pelo item inline (sem lista por tras e
+// com a acao de exclusao disponivel no proprio formulario).
 // Nesse caso: seta de voltar some, X fecha o popover todo (onClose).
-function AlarmForm({ initialAlarm, periodsWithCards, onBack, onSave, directEdit = false, onClose }) {
+function AlarmForm({
+  initialAlarm,
+  periodsWithCards,
+  onBack,
+  onSave,
+  onDelete,
+  directEdit = false,
+  onClose,
+}) {
   const initial = splitTime(initialAlarm?.time);
   const [hours, setHours] = useState(initial.h);
   const [minutes, setMinutes] = useState(initial.m);
@@ -147,6 +156,17 @@ function AlarmForm({ initialAlarm, periodsWithCards, onBack, onSave, directEdit 
       ) : null}
 
       <div className="alarm-form__foot">
+        {isEditing ? (
+          <button
+            type="button"
+            className="alarm-form__delete"
+            onClick={() => onDelete(initialAlarm.id)}
+            aria-label="Excluir alarme"
+            title="Excluir alarme"
+          >
+            <Trash2 size={16} strokeWidth={2.3} />
+          </button>
+        ) : null}
         <button
           type="button"
           className="alarm-form__save"
@@ -200,6 +220,10 @@ export default function AlarmsPopover({
           periodsWithCards={periodsWithCards}
           onBack={() => setEditing(null)}
           onSave={save}
+          onDelete={(id) => {
+            onDelete(id);
+            onClose();
+          }}
           directEdit={directEdit && editing !== "new"}
           onClose={onClose}
         />

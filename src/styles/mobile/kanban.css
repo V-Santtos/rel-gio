@@ -212,6 +212,13 @@
   .lane__alarm-item-desc {
     color: color-mix(in srgb, var(--accent) 55%, var(--muted));
   }
+  .lane__alarm-item-delete {
+    width: 34px;
+    height: 34px;
+    margin: -4px -6px -4px 0;
+    color: var(--accent);
+    opacity: 1;
+  }
 
   /* ── "Adicione um cartão" — tracejado, sem virar vermelho ──── */
   .lane__addcard {
@@ -401,6 +408,11 @@
     font-size: 14px;
   }
   .kpop.kpop--alarms .alarm-form__save {
+    height: 44px;
+    border-radius: 11px;
+  }
+  .kpop.kpop--alarms .alarm-form__delete {
+    width: 44px;
     height: 44px;
     border-radius: 11px;
   }

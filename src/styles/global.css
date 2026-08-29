@@ -781,8 +781,8 @@ button.account-menu__item:focus-visible {
 
 /* ===== Modo tela cheia do relogio (estilo Fliqlo) =====
    O relogio sai do fluxo e ocupa a viewport inteira; o resto some. Escala
-   pelo EIXO MAIS APERTADO (min(vw, vh)) -> sempre cabe, em qualquer janela,
-   sem nunca empilhar (segue lado a lado). So entra na secao Foco. */
+   pelo EIXO MAIS APERTADO (min(vw, vh)) -> sempre cabe. Em desktop retrato,
+   a regra dedicada abaixo empilha as unidades. So entra na secao Foco. */
 .app.is-expanded .dock,
 .app.is-expanded .account-menu,
 .app.is-expanded .focus-actions {
@@ -892,6 +892,28 @@ button.account-menu__item:focus-visible {
 }
 .app.is-clock-expanded .flip-unit__action svg {
   width: calc(var(--fit) * 0.075);
+}
+
+/* Desktop em monitor vertical: separa esse caso do mobile usando largura,
+   proporcao e ponteiro fino. Horas/Minutos (ou Minutos/Segundos no Foco)
+   passam a ocupar o eixo vertical, preservando o desktop horizontal. */
+@media (min-width: 769px) and (orientation: portrait) and (max-aspect-ratio: 4/5) and (hover: hover) and (pointer: fine) {
+  .app.is-expanded .flip-clock,
+  .app.is-clock-expanded .flip-clock {
+    flex-direction: column;
+    align-items: center;
+    --fit: min(74vw, 38vh);
+    --unit-w: var(--fit);
+    --unit-h: calc(var(--fit) * 1.06);
+    --unit-font: calc(var(--fit) * 0.95);
+    --card-gap: calc(var(--fit) * 0.065);
+    --card-radius: calc(var(--fit) * 0.09);
+  }
+
+  /* Se o Foco exibir HH:MM:SS, reduz as tres unidades para a coluna caber. */
+  .app.is-expanded .flip-clock--hours {
+    --fit: min(66vw, 25vh);
+  }
 }
 /* "Configurações" segue o padrão ghost dos controles; gira a engrenagem no hover */
 .focus-config svg {
@@ -2115,7 +2137,7 @@ button.account-menu__item:focus-visible {
 .lane__alarm-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 3px;
   width: 100%;
   padding: 3px 5px;
   border: 0;
@@ -2123,8 +2145,6 @@ button.account-menu__item:focus-visible {
   background: transparent;
   color: var(--fg);
   font-family: inherit;
-  text-align: left;
-  cursor: pointer;
   transition: background-color 0.15s ease;
 }@media (hover: hover) {
 .lane__alarm-item:hover {
@@ -2140,6 +2160,50 @@ button.account-menu__item:focus-visible {
 .lane__alarm-item.is-dragging {
   opacity: 0.4;
   cursor: grabbing;
+}
+.lane__alarm-item-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lane__alarm-item-delete {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+@media (hover: hover) {
+  .lane__alarm-item:hover .lane__alarm-item-delete,
+  .lane__alarm-item:focus-within .lane__alarm-item-delete {
+    opacity: 1;
+  }
+  .lane__alarm-item-delete:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+  }
+}
+.lane__alarm-item-delete:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .lane__alarm-item-icon {
   flex-shrink: 0;
@@ -3116,16 +3180,11 @@ button.account-menu__item:focus-visible {
   display: inline-flex;
 }
 .mde__heading-menu {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 8px);
-  z-index: 4;
-  width: 190px;
+  width: 100%;
+}
+.kpop.mde__heading-popover {
+  gap: 0;
   padding: 6px;
-  border: 1px solid var(--modal-border);
-  border-radius: 12px;
-  background: var(--modal-bg);
-  box-shadow: var(--modal-shadow), var(--modal-rim);
 }
 .mde__heading-menu button {
   display: grid;
@@ -3578,6 +3637,14 @@ button.account-menu__item:focus-visible {
 .cardmodal__action:hover svg,
 .cardmodal__action.is-open svg {
   color: var(--fg);
+}
+.cardmodal__action.has-value {
+  background: var(--hover);
+  border-color: var(--field-border-focus);
+  color: var(--fg);
+}
+.cardmodal__action.has-value svg {
+  color: var(--accent);
 }
 .cardmodal__action:focus-visible {
   outline: 2px solid var(--field-border-focus);
@@ -4089,6 +4156,32 @@ button.account-menu__item:focus-visible {
 }
 .alarm-form__foot {
   display: flex;
+  gap: 8px;
+}
+.alarm-form__delete {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--field-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+@media (hover: hover) {
+  .alarm-form__delete:hover {
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--field-border));
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
+}
+.alarm-form__delete:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .alarm-form__save {
   display: inline-flex;

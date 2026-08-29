@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
+import Popover from "./Popover.jsx";
 import {
   Bold,
   Italic,
@@ -42,7 +43,7 @@ function ToolbarButton({ active, title, children, onClick }) {
 export default function MarkdownEditor({ value, onChange, onBlur }) {
   const [active, setActive] = useState({});
   const [headingOpen, setHeadingOpen] = useState(false);
-  const headingWrapRef = useRef(null);
+  const headingBtnRef = useRef(null);
 
   const extensions = useMemo(
     () => [
@@ -85,23 +86,6 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
       h3: instance.isActive("heading", { level: 3 }),
     });
   };
-
-  // Fecha o menu de titulos: clique fora ou Escape.
-  useEffect(() => {
-    if (!headingOpen) return undefined;
-    const onDown = (e) => {
-      if (!headingWrapRef.current?.contains(e.target)) setHeadingOpen(false);
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") setHeadingOpen(false);
-    };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [headingOpen]);
 
   const editor = useEditor({
     extensions,
@@ -149,9 +133,10 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
         aria-label="Formatacao"
         onMouseDown={(event) => event.preventDefault()}
       >
-        <div className="mde__heading-wrap" ref={headingWrapRef}>
+        <div className="mde__heading-wrap">
           <button
             type="button"
+            ref={headingBtnRef}
             className={`mde__btn mde__btn--heading${
               active.heading ? " is-active" : ""
             }${headingOpen ? " is-open" : ""}`}
@@ -169,7 +154,18 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
             <ChevronDown size={11} strokeWidth={2.4} />
           </button>
           {headingOpen ? (
-            <div className="mde__heading-menu" role="menu" aria-label="Nível do título">
+            <Popover
+              anchorRef={headingBtnRef}
+              onClose={() => setHeadingOpen(false)}
+              width={190}
+              className="mde__heading-popover"
+            >
+            <div
+              className="mde__heading-menu"
+              role="menu"
+              aria-label="Nível do título"
+              onMouseDown={(event) => event.preventDefault()}
+            >
               {[1, 2, 3].map((level) => (
                 <button
                   type="button"
@@ -205,6 +201,7 @@ export default function MarkdownEditor({ value, onChange, onBlur }) {
                 Texto normal
               </button>
             </div>
+            </Popover>
           ) : null}
         </div>
         <span className="mde__sep" aria-hidden="true" />

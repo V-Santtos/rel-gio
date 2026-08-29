@@ -12,6 +12,7 @@ import {
   CheckSquare,
   CheckCircle,
   Bell,
+  Trash2,
   Sunrise,
   Sun,
   Moon,
@@ -750,8 +751,7 @@ export default function DayLane({
   // Alarme inline "solto" (sem caixa de card): sininho + horario + descricao.
   // Clicar abre o editor daquele alarme. Vive na faixa do periodo do seu horario.
   const renderAlarm = (alarm) => (
-    <button
-      type="button"
+    <div
       key={alarm.id}
       className={`lane__alarm-item${IS_COARSE_POINTER ? "" : " is-draggable"}${
         alarm.enabled ? "" : " is-off"
@@ -760,15 +760,30 @@ export default function DayLane({
       onDragStart={(e) => onItemDragStart(e, "alarm", alarm.id)}
       onDragEnter={(e) => onItemDragEnter(e, "alarm", alarm.id)}
       onDragEnd={onItemDragEnd}
-      onClick={() => openAlarmEditor(alarm.id)}
       title="Editar alarme"
     >
-      <Bell className="lane__alarm-item-icon" size={15} strokeWidth={2.4} />
-      <span className="lane__alarm-item-time">{alarm.time}</span>
-      {alarm.description ? (
-        <span className="lane__alarm-item-desc">{alarm.description}</span>
-      ) : null}
-    </button>
+      <button
+        type="button"
+        className="lane__alarm-item-main"
+        onClick={() => openAlarmEditor(alarm.id)}
+        aria-label={`Editar alarme das ${alarm.time}`}
+      >
+        <Bell className="lane__alarm-item-icon" size={15} strokeWidth={2.4} />
+        <span className="lane__alarm-item-time">{alarm.time}</span>
+        {alarm.description ? (
+          <span className="lane__alarm-item-desc">{alarm.description}</span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className="lane__alarm-item-delete"
+        onClick={() => deleteAlarm(alarm.id)}
+        aria-label={`Excluir alarme das ${alarm.time}`}
+        title="Excluir alarme"
+      >
+        <Trash2 size={14} strokeWidth={2.3} />
+      </button>
+    </div>
   );
 
   // Modo Semana: card sem periodo cai em "A definir"; os demais agrupam nas

@@ -572,7 +572,9 @@ export default function CardModal({
                 <button
                   type="button"
                   ref={periodBtnRef}
-                  className={`cardmodal__action${menu === "period" ? " is-open" : ""}${
+                  className={`cardmodal__action${draft.period ? " has-value" : ""}${
+                    menu === "period" ? " is-open" : ""
+                  }${
                     periodError && !draft.period ? " is-error" : ""
                   }`}
                   aria-haspopup="menu"

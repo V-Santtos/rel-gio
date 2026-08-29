@@ -5,16 +5,12 @@ import { Flip } from "gsap/Flip";
 
 gsap.registerPlugin(Flip);
 import {
-  Target,
-  Timer,
-  ListChecks,
   Play,
   Pause,
   RotateCcw,
   Settings,
   List,
   CalendarDays,
-  Clock3,
   Plus,
   Maximize,
   Minimize,
@@ -23,6 +19,12 @@ import FlipClock from "./components/FlipClock/FlipClock.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import MobileNav from "./components/MobileNav.jsx";
+import {
+  NavChronometerIcon,
+  NavClockIcon,
+  NavTargetIcon,
+  NavTaskIcon,
+} from "./components/NavIcons.jsx";
 import DayLane from "./components/Kanban/DayLane.jsx";
 import {
   DEFAULT_LABELS,
@@ -145,10 +147,10 @@ function rowFromConfig(userId, config) {
 }
 
 const SIDEBAR_ITEMS = [
-  { id: "horario", label: "Horário", Icon: Clock3 },
-  { id: "foco", label: "Foco", Icon: Target },
-  { id: "tarefas", label: "Tarefas", Icon: ListChecks },
-  { id: "cronometro", label: "Cronômetro", Icon: Timer },
+  { id: "horario", label: "Horário", Icon: NavClockIcon },
+  { id: "foco", label: "Foco", Icon: NavTargetIcon },
+  { id: "tarefas", label: "Tarefas", Icon: NavTaskIcon },
+  { id: "cronometro", label: "Cronômetro", Icon: NavChronometerIcon },
 ];
 
 // Bottom nav (mobile): barra reta compacta com itens iguais (icone + label +
