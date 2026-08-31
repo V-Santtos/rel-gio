@@ -1744,27 +1744,6 @@ function TimerApp({ session, onLogout, entered }) {
     [config.cycleTimes]
   );
 
-  // O motor do timer sabe exatamente quando a sessão inteira termina (último
-  // foco em sessões com vários ciclos, ou o break na sessão de um ciclo).
-  // Ligue esse evento ao áudio, para que a música não sobreviva ao ciclo.
-  const handleSessionEnd = useCallback(() => {
-    stopMusic();
-  }, []);
-
-  const timer = useTimer({
-    plan,
-    onPhaseEnd: playPhaseEnd,
-    onSessionEnd: handleSessionEnd,
-  });
-
-  // Tic-tac sutil nos ultimos 7s de cada bloco (foco e break). So quando rodando;
-  // dispara a cada mudanca de segundo (7..1), e o chime fecha no 0.
-  useEffect(() => {
-    if (!timer.running) return;
-    if (timer.remaining >= 1 && timer.remaining <= 7) playTick(timer.remaining);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timer.remaining]);
-
   // ===== Musica de fundo do modo Foco =====
   const [musicTrackId, setMusicTrackId] = useState(() => {
     const raw = localStorage.getItem("fluxtime.music.track");
@@ -1782,6 +1761,33 @@ function TimerApp({ session, onLogout, entered }) {
     () => MUSIC_TRACKS.find((t) => t.id === musicTrackId)?.src ?? null,
     [musicTrackId]
   );
+
+  // Encerrar a sessao tambem desliga a intencao de tocar musica. So parar o
+  // audio nao basta: ao voltar para o ciclo 1, o efeito de virada o iniciaria
+  // de novo porque `musicOn` ainda estaria ligado.
+  const handleSessionEnd = useCallback(() => {
+    stopMusic();
+    setMusicOn(false);
+    try {
+      localStorage.setItem("fluxtime.music.on", "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const timer = useTimer({
+    plan,
+    onPhaseEnd: playPhaseEnd,
+    onSessionEnd: handleSessionEnd,
+  });
+
+  // Tic-tac sutil nos ultimos 7s de cada bloco (foco e break). So quando rodando;
+  // dispara a cada mudanca de segundo (7..1), e o chime fecha no 0.
+  useEffect(() => {
+    if (!timer.running) return;
+    if (timer.remaining >= 1 && timer.remaining <= 7) playTick(timer.remaining);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.remaining]);
 
   // Escolher faixa: com a musica ja ligada, crossfade pra ela na hora; senao
   // so guarda a escolha (aplica no proximo play).

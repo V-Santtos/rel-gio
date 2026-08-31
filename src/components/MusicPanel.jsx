@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { ChevronDown, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import Popover from "./Kanban/Popover.jsx";
 import MusicTrackPicker from "./MusicTrackPicker.jsx";
@@ -19,8 +20,42 @@ export default function MusicPanel({
   onVolume,
 }) {
   const volRef = useRef(null);
+  const playRef = useRef(null);
+  const pulseRef = useRef(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [volOpen, setVolOpen] = useState(false);
+
+  // Convite visual exclusivo do botao de play: e intencionalmente um anel
+  // separado, para nao animar a capsula inteira do player.
+  useLayoutEffect(() => {
+    const play = playRef.current;
+    const pulse = pulseRef.current;
+    if (!play || !pulse) return undefined;
+
+    gsap.killTweensOf(pulse);
+    gsap.set(pulse, { autoAlpha: 0, scale: 1 });
+
+    if (
+      !promptMusic ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return undefined;
+    }
+
+    const context = gsap.context(() => {
+      gsap.set(pulse, { autoAlpha: 0.62, scale: 1 });
+      gsap.to(pulse, {
+        autoAlpha: 0,
+        scale: 1.46,
+        duration: 1.15,
+        ease: "power1.out",
+        repeat: -1,
+        repeatDelay: 0.5,
+      });
+    }, play);
+
+    return () => context.revert();
+  }, [promptMusic]);
 
   // Guarda o ultimo volume audivel pra restaurar ao desmutar.
   const lastVolRef = useRef(volume > 0 ? volume : 0.5);
@@ -40,6 +75,7 @@ export default function MusicPanel({
   return (
     <section className="music-panel" data-on={on} aria-label="Player de música de foco">
       <button
+        ref={playRef}
         type="button"
         className="music-player__play"
         data-on={on}
@@ -48,6 +84,7 @@ export default function MusicPanel({
         aria-label={on ? "Pausar música" : "Tocar música"}
         onClick={onToggleOn}
       >
+        <span ref={pulseRef} className="music-player__play-pulse" aria-hidden="true" />
         {on ? (
           <Pause size={19} strokeWidth={2.7} aria-hidden="true" />
         ) : (
