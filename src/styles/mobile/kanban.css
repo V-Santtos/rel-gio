@@ -156,6 +156,20 @@
   .kcard.has-label-bars {
     padding-right: 26px;
   }
+  .kcard__cover {
+    margin: -13px -14px 0;
+  }
+  .kcard.has-label-bars .kcard__cover {
+    margin-right: -26px;
+  }
+  .kcard.has-cover-image,
+  .kcard.has-cover-image.has-label-bars {
+    padding: 0;
+  }
+  .kcard.has-cover-image .kcard__cover,
+  .kcard.has-cover-image.has-label-bars .kcard__cover {
+    margin: 0;
+  }
   .kcard__title {
     font-size: 14.5px;
   }
@@ -279,8 +293,8 @@
     width: 100%;
     max-width: none;
     max-height: 92vh;
-    gap: 16px;
-    padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+    gap: 10px;
+    padding: 10px 0 0;
     border-bottom: 0;
     border-radius: 22px 22px 0 0;
   }
@@ -294,55 +308,31 @@
     border-radius: 999px;
     background: color-mix(in srgb, var(--fg) 22%, transparent);
   }
+  /* No sheet a capa fica logo abaixo da alca, de borda a borda. */
+  .cardmodal__header:not(.has-cover) {
+    padding: 0 18px;
+  }
+  .cardmodal__body {
+    gap: 16px;
+    padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .cardmodal .mde__toolbar {
+    top: -16px;
+  }
+  .cardmodal__stickybar {
+    height: 58px;
+    padding: 0 18px 0 24px;
+  }
+  .cardmodal__cover--color {
+    height: 100px;
+  }
+  .cardmodal__cover--image {
+    height: 168px;
+  }
+  .attachments__list {
+    padding-left: 0;
+  }
 
-  /* ── Data de entrega: picker nativo no mobile ──────────────── */
-  /* Esconde o seletor custom (trigger + painel Dia/Mês/Salvar)... */
-  .checklist__date,
-  .checklist__date-panel {
-    display: none;
-  }
-  /* ...e mostra o campo de texto dd/mm (digitacao manual, ano automatico),
-     com um icone de relogio indicando que se trata de tempo. */
-  .checklist__date-native-wrap {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-    height: 34px;
-    padding: 0 12px;
-    border: 1px solid var(--field-border, var(--border));
-    border-radius: 9px;
-    background: var(--field-bg);
-    color: var(--muted);
-  }
-  .checklist__date-native-wrap:focus-within {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-  .checklist__date-native-wrap > svg {
-    flex: none;
-  }
-  .checklist__date-native {
-    width: 46px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--fg);
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-    text-align: center;
-  }
-  .checklist__date-native:focus {
-    outline: none;
-  }
-  .checklist__date-native::placeholder {
-    color: var(--muted);
-    font-weight: 500;
-    letter-spacing: normal;
-  }
 }
 
 @media (max-width: 768px) {

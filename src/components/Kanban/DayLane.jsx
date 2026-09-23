@@ -10,6 +10,7 @@ import {
   X,
   Archive,
   CheckSquare,
+  Clock as ClockIcon,
   CheckCircle,
   Bell,
   Trash2,
@@ -22,6 +23,9 @@ import Checkbox from "./Checkbox.jsx";
 import Popover from "./Popover.jsx";
 import AlarmsPopover from "./AlarmsPopover.jsx";
 import { labelById } from "./labels.js";
+import AttachmentImage from "./AttachmentImage.jsx";
+import { NO_COVER, readableTextOn, resolveCover } from "./cover.js";
+import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
 import {
   loadAlarms,
   saveAlarms,
@@ -215,11 +219,13 @@ export default function DayLane({
   mode: controlledMode = null,
   initialAlarms = null,
   labelCatalog = null,
+  attachmentsApi = null,
   onLanePatch,
   onCreateCard,
   onUpdateCard,
   onDeleteCard,
   onArchiveCards,
+  onArchiveCard,
   onCrossLaneDrop,
   onDeleteLane,
   onCreateAlarm,
@@ -227,6 +233,7 @@ export default function DayLane({
   onDeleteAlarm,
   onCreateLabel,
   onUpdateLabel,
+  onDeleteLabel,
   onLaneDragStart,
   onLaneDragEnter,
   onLaneDragEnd,
@@ -507,6 +514,8 @@ export default function DayLane({
       done: false,
       labels: [],
       checklists: [],
+      attachments: [],
+      cover: NO_COVER,
       period: null,
       order: nextOrder(),
     };
@@ -534,6 +543,12 @@ export default function DayLane({
     setCards((list) => list.filter((c) => c.id !== id));
     setSelectedId(null);
     onDeleteCard?.(id);
+  };
+
+  const archiveCard = (id) => {
+    setCards((list) => list.filter((c) => c.id !== id));
+    setSelectedId(null);
+    onArchiveCard?.(id);
   };
 
   const checklistStats = (card) => {
@@ -679,8 +694,8 @@ export default function DayLane({
 
   const renderCard = (card) => {
     const cardLabels = labelsForCard(card);
-    const primaryLabel = cardLabels.length === 1 ? cardLabels[0] : null;
-    const hasLabelBars = cardLabels.length > 1;
+    const hasLabelBars = cardLabels.length > 0;
+    const cover = resolveCover(card.cover, card.attachments);
     const stats = checklistStats(card);
     const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
 
@@ -688,12 +703,14 @@ export default function DayLane({
       <article
         key={card.id}
         className={`kcard${card.done ? " is-done" : ""}${
-          primaryLabel ? " has-label-color" : ""
-        }${hasLabelBars ? " has-label-bars" : ""}${
+          hasLabelBars ? " has-label-bars" : ""
+        }${cover.type !== "none" ? ` has-cover has-cover-${cover.type}` : ""}${
           weekMode && !IS_COARSE_POINTER ? " is-draggable" : ""
         }${dragId === `card:${card.id}` ? " is-dragging" : ""}`}
         style={
-          primaryLabel ? { "--kcard-label-color": primaryLabel.color } : undefined
+          cover.type === "color"
+            ? { "--kcard-cover": cover.color, "--kcard-cover-fg": readableTextOn(cover.color) }
+            : undefined
         }
         ref={(el) => (cardRefs.current[card.id] = el)}
         role="button"
@@ -710,14 +727,43 @@ export default function DayLane({
           }
         }}
       >
-        <div className="kcard__main">
-          <Checkbox
-            checked={card.done}
-            onChange={(v) => updateCard(card.id, { done: v })}
-            label={`Marcar "${card.title}" como ${card.done ? "não feito" : "feito"}`}
-          />
-          <p className="kcard__title">{card.title}</p>
-        </div>
+        {(() => {
+          const main = (
+            <div className="kcard__main">
+              <Checkbox
+                checked={card.done}
+                onChange={(v) => updateCard(card.id, { done: v })}
+                label={`Marcar "${card.title}" como ${card.done ? "não feito" : "feito"}`}
+              />
+              <p className="kcard__title">{card.title}</p>
+            </div>
+          );
+          // Com foto: o titulo vai DENTRO da imagem, sobre um degrade escuro.
+          if (cover.type !== "image") return main;
+          return (
+            <div className="kcard__cover kcard__cover--image">
+              <AttachmentImage
+                attachment={cover.attachment}
+                alt={`Capa: ${cover.attachment.name}`}
+                style={{ objectPosition: `${cover.x * 100}% ${cover.y * 100}%` }}
+                draggable={false}
+              />
+              {main}
+            </div>
+          );
+        })()}
+        {card.startDate || card.dueAt ? (() => {
+          const status = dueStatus(card);
+          return (
+            <span
+              className={`duebadge${status ? ` is-${status}` : ""}`}
+              title={status ? DUE_STATUS_LABEL[status] : undefined}
+            >
+              <ClockIcon size={13} strokeWidth={2.3} aria-hidden="true" />
+              {formatCardDates(card, { withTime: false })}
+            </span>
+          );
+        })() : null}
         {stats.total ? (
           <div className="kcard__meta">
             <CheckSquare className="kcard__meta-icon" size={14} strokeWidth={2.2} />
@@ -1100,10 +1146,13 @@ export default function DayLane({
           day={name}
           weekMode={weekMode}
           labelCatalog={labelCatalog}
+          attachmentsApi={attachmentsApi}
           onCreateLabel={onCreateLabel}
           onUpdateLabel={onUpdateLabel}
+          onDeleteLabel={onDeleteLabel}
           onChange={(patch) => updateCard(selectedCard.id, patch)}
           onDelete={() => deleteCard(selectedCard.id)}
+          onArchive={() => archiveCard(selectedCard.id)}
           onClose={() => setSelectedId(null)}
         />
       ) : null}

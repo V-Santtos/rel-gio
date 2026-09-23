@@ -1,7 +1,8 @@
-import { ArrowLeft, Check, Edit3, Pipette, Plus, X } from "lucide-react";
+import { ArrowLeft, Check, Pipette, SquarePen, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import Popover from "./Popover.jsx";
 import Checkbox from "./Checkbox.jsx";
+import { readableTextOn } from "./cover.js";
 import { makeClientId } from "../../lib/id.js";
 
 const LABEL_PRESETS = [
@@ -100,7 +101,8 @@ function ColorPickerPanel({ value, onApply, onClose }) {
   );
 }
 
-function LabelForm({ initialLabel, onBack, onSave }) {
+function LabelForm({ initialLabel, onBack, onSave, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(initialLabel?.name || "");
   const [color, setColor] = useState(initialLabel?.color || LABEL_PRESETS[0]);
   const [hex, setHex] = useState(initialLabel?.color || LABEL_PRESETS[0]);
@@ -142,8 +144,10 @@ function LabelForm({ initialLabel, onBack, onSave }) {
         </button>
       </div>
 
-      <div className="label-form__preview" style={{ "--label-color": color }}>
-        <span aria-hidden="true" />
+      <div
+        className={`label-form__preview${color === "transparent" ? " is-empty" : ""}`}
+        style={{ "--label-color": color, "--label-fg": readableTextOn(color) }}
+      >
         <strong>{name.trim() || "Sua etiqueta"}</strong>
       </div>
 
@@ -191,20 +195,49 @@ function LabelForm({ initialLabel, onBack, onSave }) {
         </label>
       </div>
 
-      <div className="label-form__foot">
-        <button type="button" className="label-form__remove" onClick={() => chooseColor("transparent")}>
-          <X size={16} strokeWidth={2.2} />
-          <span>Sem cor</span>
-        </button>
-        <button type="button" className="label-form__create" onClick={submit}>
-          {isEditing ? "Salvar" : "Criar etiqueta"}
-        </button>
-      </div>
+      {isEditing ? (
+        <>
+          {/* Edicao: "Sem cor" isolado; Excluir + Salvar embaixo. */}
+          <button
+            type="button"
+            className="label-form__remove label-form__remove--full"
+            onClick={() => chooseColor("transparent")}
+          >
+            <X size={16} strokeWidth={2.2} />
+            <span>Sem cor</span>
+          </button>
+          <div className="label-form__foot">
+            <button
+              type="button"
+              className={`label-form__delete${confirmDelete ? " is-confirming" : ""}`}
+              onClick={() => {
+                if (confirmDelete) onDelete(initialLabel.id);
+                else setConfirmDelete(true);
+              }}
+            >
+              {confirmDelete ? "Confirmar exclusão" : "Excluir"}
+            </button>
+            <button type="button" className="label-form__create" onClick={submit}>
+              Salvar
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="label-form__foot">
+          <button type="button" className="label-form__remove" onClick={() => chooseColor("transparent")}>
+            <X size={16} strokeWidth={2.2} />
+            <span>Sem cor</span>
+          </button>
+          <button type="button" className="label-form__create" onClick={submit}>
+            Criar etiqueta
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function LabelsPopover({ anchorRef, selected, labels, onToggle, onCreate, onUpdate, onClose }) {
+export default function LabelsPopover({ anchorRef, selected, labels, onToggle, onCreate, onUpdate, onDelete, onClose }) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null);
   const hasLabels = labels.some((label) => Boolean(label.name?.trim()) || selected.includes(label.id));
@@ -228,7 +261,15 @@ export default function LabelsPopover({ anchorRef, selected, labels, onToggle, o
   return (
     <Popover anchorRef={anchorRef} onClose={onClose} width={312} className="kpop--labels">
       {editing !== null ? (
-        <LabelForm initialLabel={editing === "new" ? null : editing} onBack={() => setEditing(null)} onSave={saveLabel} />
+        <LabelForm
+          initialLabel={editing === "new" ? null : editing}
+          onBack={() => setEditing(null)}
+          onSave={saveLabel}
+          onDelete={(id) => {
+            onDelete?.(id);
+            setEditing(null);
+          }}
+        />
       ) : (
         <>
           <div className="kpop__head">
@@ -240,20 +281,26 @@ export default function LabelsPopover({ anchorRef, selected, labels, onToggle, o
           {hasLabels ? (
             <>
               <input className="kpop__search" value={query} placeholder="Buscar etiquetas..." onChange={(event) => setQuery(event.target.value)} />
-              <span className="kpop__section-label">Suas etiquetas</span>
+              <span className="kpop__section-label">Etiquetas</span>
               <div className="kpop__labels">
                 {filtered.map((label) => {
                   const isOn = selected.includes(label.id);
                   const isLocked = !isOn && selected.length >= 4;
                   return (
                     <div key={label.id} className={`kpop__label-row${isLocked ? " is-locked" : ""}`}>
-                      <Checkbox checked={isOn} onChange={() => onToggle(label.id)} size={16} label={`Selecionar etiqueta ${label.name || "sem nome"}`} />
-                      <button type="button" className="kpop__swatch" style={{ "--label-color": label.color }} onClick={() => onToggle(label.id)} disabled={isLocked}>
-                        <i aria-hidden="true" />
-                        <span>{label.name || "Sem nome"}</span>
+                      <Checkbox checked={isOn} onChange={() => onToggle(label.id)} size={16} shape="square" label={`Selecionar etiqueta ${label.name || "sem nome"}`} />
+                      <button
+                        type="button"
+                        className="kpop__swatch kpop__swatch--solid"
+                        style={{ "--label-color": label.color, "--label-fg": readableTextOn(label.color) }}
+                        aria-label={label.name || "Etiqueta sem nome"}
+                        onClick={() => onToggle(label.id)}
+                        disabled={isLocked}
+                      >
+                        {label.name ? <span>{label.name}</span> : null}
                       </button>
                       <button type="button" className="kpop__edit" aria-label="Editar etiqueta" onClick={() => setEditing(label)}>
-                        <Edit3 size={15} strokeWidth={2.2} />
+                        <SquarePen size={15} strokeWidth={2.2} />
                       </button>
                     </div>
                   );
@@ -263,9 +310,8 @@ export default function LabelsPopover({ anchorRef, selected, labels, onToggle, o
           ) : (
             <p className="kpop__empty">Nenhuma etiqueta criada.</p>
           )}
-          <button type="button" className="kpop__create-label" onClick={() => setEditing("new")}>
-            <Plus size={16} strokeWidth={2.3} />
-            <span>Criar etiqueta</span>
+          <button type="button" className="kpop__create-label kpop__create-label--outline" onClick={() => setEditing("new")}>
+            <span>Criar uma nova etiqueta</span>
           </button>
         </>
       )}

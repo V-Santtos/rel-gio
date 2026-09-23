@@ -8,7 +8,7 @@ import gsap from "gsap";
  * ao marcar. O autoAlpha garante que o estado neutro fique 100% vazio (sem o
  * "ponto" residual que o strokeLinecap deixava).
  */
-export default function Checkbox({ checked, onChange, size = 18, label }) {
+export default function Checkbox({ checked, onChange, size = 18, label, shape = "circle" }) {
   const tickRef = useRef(null);
   const first = useRef(true);
 
@@ -51,7 +51,7 @@ export default function Checkbox({ checked, onChange, size = 18, label }) {
       role="checkbox"
       aria-checked={checked}
       aria-label={label}
-      className={`kcheck${checked ? " is-checked" : ""}`}
+      className={`kcheck${checked ? " is-checked" : ""}${shape === "square" ? " kcheck--square" : ""}`}
       style={{ width: size, height: size }}
       onClick={(e) => {
         e.stopPropagation();

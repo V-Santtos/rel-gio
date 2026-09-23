@@ -62,6 +62,14 @@ import {
   showAlarmNotification,
 } from "./components/Kanban/alarms.js";
 import { AlarmToast } from "./components/Kanban/DayLane.jsx";
+import {
+  ATTACHMENT_COLUMNS,
+  attachmentFromRow,
+  deleteAttachment,
+  removeAttachmentFiles,
+  uploadAttachment,
+} from "./components/Kanban/attachments.js";
+import { NO_COVER, coverFromRow, coverToPayload } from "./components/Kanban/cover.js";
 import { makeClientId } from "./lib/id.js";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
 
@@ -642,6 +650,7 @@ function TarefasSection({ userId }) {
         checklistsResult,
         itemsResult,
         alarmsResult,
+        attachmentsResult,
       ] = await Promise.all([
         supabase
           .from("task_lanes")
@@ -655,7 +664,9 @@ function TarefasSection({ userId }) {
           .order("sort_order", { ascending: true }),
         supabase
           .from("tasks")
-          .select("id, lane_id, title, description, done, period, status, sort_order")
+          .select(
+            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at"
+          )
           .eq("user_id", userId)
           .neq("status", "archived")
           .order("sort_order", { ascending: true }),
@@ -676,6 +687,11 @@ function TarefasSection({ userId }) {
           .select("id, lane_id, time_of_day, description, enabled, sort_order")
           .eq("user_id", userId)
           .order("sort_order", { ascending: true }),
+        supabase
+          .from("task_attachments")
+          .select(ATTACHMENT_COLUMNS)
+          .eq("user_id", userId)
+          .order("sort_order", { ascending: true }),
       ]);
 
       const firstError = [
@@ -686,6 +702,7 @@ function TarefasSection({ userId }) {
         checklistsResult,
         itemsResult,
         alarmsResult,
+        attachmentsResult,
       ].find((result) => result.error)?.error;
 
       if (!active) return;
@@ -732,6 +749,13 @@ function TarefasSection({ userId }) {
         checklistsByTask.set(checklist.task_id, list);
       });
 
+      const attachmentsByTask = new Map();
+      (attachmentsResult.data || []).sort(bySort).forEach((row) => {
+        const list = attachmentsByTask.get(row.task_id) || [];
+        list.push(attachmentFromRow(row));
+        attachmentsByTask.set(row.task_id, list);
+      });
+
       const cardsByLane = new Map();
       (tasksResult.data || []).sort(bySort).forEach((task) => {
         if (!task.lane_id) return;
@@ -743,6 +767,10 @@ function TarefasSection({ userId }) {
           done: !!task.done,
           labels: assignmentsByTask.get(task.id) || [],
           checklists: checklistsByTask.get(task.id) || [],
+          attachments: attachmentsByTask.get(task.id) || [],
+          cover: coverFromRow(task),
+          startDate: task.start_date || null,
+          dueAt: task.due_at || null,
           period: task.period || null,
           order: task.sort_order ?? list.length,
         });
@@ -946,94 +974,79 @@ function TarefasSection({ userId }) {
     }
   };
 
+  // Uma unica chamada transacional (RPC save_task_card): o cartao nunca fica
+  // salvo pela metade. due_date dos itens nao e enviado — o banco o preserva.
   const syncCardNow = async (laneId, card) => {
     if (!remoteEnabled) return;
-    const { error: taskError } = await supabase
-      .from("tasks")
-      .upsert(
-        {
-          id: card.id,
-          user_id: userId,
-          lane_id: laneId,
-          title: card.title || "",
-          description: card.description || "",
-          done: !!card.done,
-          status: card.done ? "done" : "todo",
-          period: card.period || null,
-          sort_order: card.order ?? 0,
-        },
-        { onConflict: "id" }
-      );
-    if (taskError) {
-      reportSyncError("Nao consegui salvar o cartao.", taskError);
-      return;
-    }
+    const { error } = await supabase.rpc("save_task_card", {
+      p_card: {
+        id: card.id,
+        lane_id: laneId,
+        title: card.title || "",
+        description: card.description || "",
+        done: !!card.done,
+        period: card.period || null,
+        sort_order: card.order ?? 0,
+        labels: card.labels || [],
+        cover: coverToPayload(card.cover, card.attachments),
+        start_date: card.startDate || null,
+        due_at: card.dueAt || null,
+        checklists: (card.checklists || []).map(cleanChecklist).map((list, index) => ({
+          id: list.id,
+          title: list.title || "Checklist",
+          sort_order: list.sortOrder ?? index,
+          items: (list.items || []).map((item, itemIndex) => ({
+            id: item.id,
+            text: item.text || "",
+            done: !!item.done,
+            sort_order: item.sortOrder ?? itemIndex,
+          })),
+        })),
+      },
+    });
+    if (error) reportSyncError("Nao consegui salvar o cartao.", error);
+  };
 
-    const { error: labelDeleteError } = await supabase
-      .from("task_label_assignments")
-      .delete()
-      .eq("task_id", card.id);
-    if (labelDeleteError) {
-      reportSyncError("Nao consegui atualizar as etiquetas do cartao.", labelDeleteError);
-      return;
-    }
-
-    const labelRows = (card.labels || []).map((labelId, index) => ({
-      task_id: card.id,
-      label_id: labelId,
-      sort_order: index,
-    }));
-    if (labelRows.length) {
-      const { error } = await supabase.from("task_label_assignments").insert(labelRows);
-      if (error) {
-        reportSyncError("Nao consegui salvar as etiquetas do cartao.", error);
-        return;
-      }
-    }
-
-    const { error: checklistDeleteError } = await supabase
-      .from("task_checklists")
-      .delete()
-      .eq("task_id", card.id);
-    if (checklistDeleteError) {
-      reportSyncError("Nao consegui atualizar o checklist.", checklistDeleteError);
-      return;
-    }
-
-    const cleanLists = (card.checklists || []).map(cleanChecklist);
-    if (!cleanLists.length) return;
-
-    const { error: checklistError } = await supabase.from("task_checklists").insert(
-      cleanLists.map((list, index) => ({
-        id: list.id,
-        task_id: card.id,
-        title: list.title || "Checklist",
-        sort_order: list.sortOrder ?? index,
-      }))
+  const patchCardLocal = (cardId, fn) => {
+    setLanes((list) =>
+      list.map((lane) =>
+        lane.cards.some((card) => card.id === cardId)
+          ? { ...lane, cards: lane.cards.map((card) => (card.id === cardId ? fn(card) : card)) }
+          : lane
+      )
     );
-    if (checklistError) {
-      reportSyncError("Nao consegui salvar o checklist.", checklistError);
-      return;
-    }
+  };
 
-    const itemRows = cleanLists.flatMap((list) =>
-      (list.items || []).map((item, index) => ({
-        id: item.id,
-        checklist_id: list.id,
-        text: item.text || "",
-        done: !!item.done,
-        due_date: item.dueDate || null,
-        sort_order: item.sortOrder ?? index,
-      }))
-    );
-    if (!itemRows.length) return;
-
-    const { error: itemError } = await supabase
-      .from("task_checklist_items")
-      .insert(itemRows);
-    if (itemError) {
-      reportSyncError("Nao consegui salvar os itens do checklist.", itemError);
-    }
+  // Anexos sao gravados na hora (fora do rascunho do modal) e so atualizam o
+  // estado local do cartao; a capa que apontava para um anexo apagado o banco
+  // ja limpou sozinho.
+  const attachmentsApi = {
+    enabled: remoteEnabled,
+    upload: async (card, file) => {
+      await cardSyncQueue.current.get(card.id);
+      const att = await uploadAttachment({
+        userId,
+        taskId: card.id,
+        file,
+        sortOrder: (card.attachments || []).length,
+      });
+      patchCardLocal(card.id, (current) => ({
+        ...current,
+        attachments: [...(current.attachments || []), att],
+      }));
+      return att;
+    },
+    remove: async (card, att) => {
+      await deleteAttachment(att);
+      patchCardLocal(card.id, (current) => ({
+        ...current,
+        attachments: (current.attachments || []).filter((item) => item.id !== att.id),
+        cover:
+          current.cover?.type === "image" && current.cover.attachmentId === att.id
+            ? NO_COVER
+            : current.cover,
+      }));
+    },
   };
 
   // Mantém as gravações de CADA cartão em sequência. Cartões diferentes ainda
@@ -1100,6 +1113,9 @@ function TarefasSection({ userId }) {
   };
 
   const deleteCard = (laneId, cardId) => {
+    const attachments =
+      lanes.find((lane) => lane.id === laneId)?.cards.find((card) => card.id === cardId)
+        ?.attachments || [];
     setLanes((list) =>
       list.map((lane) =>
         lane.id === laneId
@@ -1108,12 +1124,14 @@ function TarefasSection({ userId }) {
       )
     );
     if (!remoteEnabled) return;
+    // A linha some em cascada com os anexos; os arquivos saem do Storage depois.
     supabase
       .from("tasks")
       .delete()
       .eq("id", cardId)
       .then(({ error }) => {
         if (error) reportSyncError("Nao consegui excluir o cartao.", error);
+        else removeAttachmentFiles(attachments);
       });
   };
 
@@ -1131,6 +1149,25 @@ function TarefasSection({ userId }) {
       )
       .then(({ error }) => {
         if (error) reportSyncError("Nao consegui arquivar os cartoes.", error);
+      });
+  };
+
+  // Arquiva UM cartao (menu "…" do modal): sai do quadro, fica no banco.
+  const archiveCard = (laneId, cardId) => {
+    setLanes((list) =>
+      list.map((lane) =>
+        lane.id === laneId
+          ? { ...lane, cards: lane.cards.filter((card) => card.id !== cardId) }
+          : lane
+      )
+    );
+    if (!remoteEnabled) return;
+    supabase
+      .from("tasks")
+      .update({ status: "archived", archived_at: new Date().toISOString() })
+      .eq("id", cardId)
+      .then(({ error }) => {
+        if (error) reportSyncError("Nao consegui arquivar o cartao.", error);
       });
   };
 
@@ -1239,6 +1276,34 @@ function TarefasSection({ userId }) {
       .eq("id", label.id)
       .then(({ error }) => {
         if (error) reportSyncError("Nao consegui salvar a etiqueta.", error);
+      });
+  };
+
+  // Excluir etiqueta: sai do catalogo e de todos os cartoes. No banco, as
+  // ligacoes com cartoes caem em cascata (task_label_assignments).
+  const deleteLabel = (labelId) => {
+    setLabels((current) => {
+      const next = current.filter((item) => item.id !== labelId);
+      setRuntimeLabels(next);
+      return next;
+    });
+    setLanes((list) =>
+      list.map((lane) => ({
+        ...lane,
+        cards: lane.cards.map((card) =>
+          (card.labels || []).includes(labelId)
+            ? { ...card, labels: card.labels.filter((id) => id !== labelId) }
+            : card
+        ),
+      }))
+    );
+    if (!remoteEnabled) return;
+    supabase
+      .from("task_labels")
+      .delete()
+      .eq("id", labelId)
+      .then(({ error }) => {
+        if (error) reportSyncError("Nao consegui excluir a etiqueta.", error);
       });
   };
 
@@ -1470,11 +1535,13 @@ function TarefasSection({ userId }) {
           mode={boardMode}
           initialAlarms={remoteEnabled ? lane.alarms : null}
           labelCatalog={labels}
+          attachmentsApi={attachmentsApi}
           onLanePatch={(patch) => persistLanePatch(lane.id, patch)}
           onCreateCard={(card) => persistCard(lane.id, card)}
           onUpdateCard={(card) => persistCard(lane.id, card)}
           onDeleteCard={(cardId) => deleteCard(lane.id, cardId)}
           onArchiveCards={(cards) => archiveCards(lane.id, cards)}
+          onArchiveCard={(cardId) => archiveCard(lane.id, cardId)}
           onCrossLaneDrop={({ cardId, fromLaneId }) =>
             moveCardAcrossLanes(fromLaneId, lane.id, cardId)
           }
@@ -1485,6 +1552,7 @@ function TarefasSection({ userId }) {
           onDeleteAlarm={(alarmId) => deleteAlarm(lane.id, alarmId)}
           onCreateLabel={createLabel}
           onUpdateLabel={updateLabel}
+          onDeleteLabel={deleteLabel}
           onLaneDragStart={handleDragStart}
           onLaneDragEnter={handleDragEnter}
           onLaneDragEnd={handleDragEnd}

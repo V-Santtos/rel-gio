@@ -2265,24 +2265,107 @@ button.account-menu__item:focus-visible {
 .kcard.has-label-bars {
   padding-right: 30px;
 }
-.kcard.has-label-color {
-  /* A cor de etiqueta sinaliza prioridade; não precisa preencher o cartão
-     inteiro para continuar legível e reconhecível. */
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--kcard-label-color) 12%, var(--kcard-bg)),
-    var(--kcard-bg) 56%
-  );
-  border-color: color-mix(in srgb, var(--kcard-label-color) 54%, var(--kcard-border));
-  box-shadow:
-    inset 3px 0 0 color-mix(in srgb, var(--kcard-label-color) 86%, transparent),
-    0 10px 18px -19px rgba(0, 0, 0, 0.9),
-    var(--kcard-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--input-highlight) 72%, transparent);
+/* Capa do cartao: independente das etiquetas. Cor = faixa; imagem = previa
+   de altura fixa em recorte (object-fit: cover), sempre ACIMA do titulo. */
+.kcard {
+  --kcard-cover-image-h: 128px;
 }
-.kcard.has-label-color .kcheck:not(.is-checked) {
-  background: var(--kcard-bg);
-  border-color: rgba(238, 241, 247, 0.62);
+.kcard.has-cover-image {
+  overflow: hidden;
+}
+.kcard__cover {
+  flex: none;
+  margin: -10px -12px 0;
+  border-bottom: 1px solid var(--kcard-border);
+}
+.kcard.has-label-bars .kcard__cover {
+  margin-right: -30px;
+}
+/* Capa de COR pinta o cartao inteiro (como no Trello); o texto usa a cor
+   legivel calculada em readableTextOn(). */
+.kcard.has-cover-color {
+  background: var(--kcard-cover);
+  border-color: color-mix(in srgb, var(--kcard-cover) 70%, #000);
+  color: var(--kcard-cover-fg);
+}
+.kcard.has-cover-color .kcard__title,
+.kcard.has-cover-color .kcard__meta {
+  color: var(--kcard-cover-fg);
+}
+.kcard.has-cover-color .kcheck:not(.is-checked) {
+  border-color: color-mix(in srgb, var(--kcard-cover-fg) 70%, transparent);
+}
+.kcard__cover--image {
+  height: var(--kcard-cover-image-h);
+  background: var(--lane-bg);
+}
+.kcard__cover--image .attimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Cartao com foto: imagem maior, de borda a borda, com o titulo por cima.
+   Degrade escuro embaixo + sombra forte nas letras garantem leitura mesmo
+   em fotos de fundo claro. */
+.kcard.has-cover-image {
+  --kcard-cover-image-h: 200px;
+  padding: 0;
+}
+.kcard.has-cover-image .kcard__cover {
+  position: relative;
+  margin: 0;
+  border-bottom: 0;
+}
+.kcard.has-cover-image .kcard__cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 30%,
+    rgba(0, 0, 0, 0.5) 58%,
+    rgba(0, 0, 0, 0.94) 100%
+  );
+  pointer-events: none;
+}
+.kcard.has-cover-image .kcard__main {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
+  align-items: flex-end;
+}
+.kcard.has-cover-image.has-label-bars .kcard__main {
+  right: 30px;
+}
+.kcard.has-cover-image .kcard__title {
+  color: #fff;
+  font-weight: 700;
+  text-shadow:
+    0 1px 2px #000,
+    0 2px 6px rgba(0, 0, 0, 0.95),
+    0 0 16px rgba(0, 0, 0, 0.9);
+}
+.kcard.has-cover-image .kcheck:not(.is-checked) {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.kcard.has-cover-image > .kcard__meta,
+.kcard.has-cover-image > .duebadge {
+  margin: 0 12px;
+}
+.kcard.has-cover-image > :last-child:not(.kcard__cover):not(.kcard__label-bars) {
+  margin-bottom: 10px;
+}
+.attimg--placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--muted);
 }
 .kcard__label-bars {
   position: absolute;
@@ -2351,8 +2434,7 @@ button.account-menu__item:focus-visible {
 .tarefas-title,
 .kcard__progress,
 .kcard__pct,
-.lane__count,
-.checklist__date-native-wrap {
+.lane__count {
   display: none;
 }
 
@@ -2513,12 +2595,9 @@ button.account-menu__item:focus-visible {
   z-index: 1;
   width: min(560px, 100%);
   max-height: min(84vh, 760px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 18px 22px 20px;
   background: var(--modal-bg);
   border: 1px solid var(--modal-border);
   border-radius: 18px;
@@ -2534,38 +2613,426 @@ button.account-menu__item:focus-visible {
   border: 1px solid transparent;
   border-radius: 15px;
 }
-.cardmodal__hero.has-label {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--cardmodal-label-color) 10%, transparent) 0%,
-      color-mix(in srgb, var(--cardmodal-label-color) 4%, transparent) 48%,
-      transparent 100%
-    );
-  border-color: color-mix(in srgb, var(--cardmodal-label-color) 18%, transparent);
+/* Capa no topo do modal (sangra ate as bordas do painel). */
+.cardmodal__header {
+  position: relative;
+  flex: none;
 }
-.cardmodal__hero.has-multiple-labels {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--cardmodal-label-color) 16%, transparent) 0%,
-      color-mix(in srgb, var(--cardmodal-label-color) 7%, transparent) 46%,
-      transparent 100%
-    );
+.cardmodal__header:not(.has-cover) {
+  padding: 18px 22px 0;
 }
-.cardmodal__hero-labels {
+.cardmodal__header:not(.has-cover) .cardmodal__top {
+  padding: 4px 6px 0;
+}
+.cardmodal__header.has-cover {
+  overflow: hidden;
+}
+/* Envolve o corpo rolavel e a barra compacta (sobreposta ao topo). */
+.cardmodal__bodywrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  /* Recorta a barra compacta: ela desliza "de baixo da capa", nunca por cima. */
+  overflow: hidden;
+}
+/* Barra compacta ao rolar: circulo + titulo + "Adicionar" (GSAP no
+   CardModal controla a entrada; nasce invisivel). */
+.cardmodal__stickybar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+  height: 64px;
+  /* 28px = padding do corpo (22) + recuo do hero (-8 +14): o circulo alinha
+     com o circulo do titulo no conteudo. */
+  padding: 0 24px 0 28px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  background: var(--modal-bg);
+  box-shadow: 0 8px 16px -12px rgba(0, 0, 0, 0.7);
+  visibility: hidden;
+  opacity: 0;
+}
+.cardmodal__stickybar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardmodal .cardmodal__stickybar .cardmodal__action {
+  flex: none;
+  align-self: center;
+  height: 36px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
+  font-weight: 500;
+}
+.cardmodal .cardmodal__stickybar .cardmodal__action svg {
+  color: var(--fg);
+}
+@media (hover: hover) {
+  .cardmodal .cardmodal__stickybar .cardmodal__action:hover {
+    background: color-mix(in srgb, var(--fg) 11%, transparent);
+  }
+}
+/* Corpo rolavel abaixo do cabecalho fixo. */
+.cardmodal__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 18px 22px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cardmodal__header.has-cover .cardmodal__top {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+}
+.cardmodal__top-tools {
+  display: flex;
+  gap: 6px;
+}
+.cardmodal__header.has-cover .cardmodal__daypill,
+.cardmodal__header.has-cover .cardmodal__close,
+.cardmodal__cover-actions button,
+.cardmodal__reposbar button {
+  background: rgba(0, 0, 0, 0.55);
+  color: #f4f5f7;
+  backdrop-filter: blur(6px);
+}
+.cardmodal__header .cardmodal__close {
+  width: 32px;
+  height: 32px;
+  margin-right: 0;
+  border-radius: 50%;
+}
+.cardmodal__header .cardmodal__daypill {
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+}
+.cardmodal__close.is-open {
+  background: var(--hover);
+  color: var(--fg);
+}
+/* Capa de COR: icones soltos (sem circulo escuro) na cor legivel da capa;
+   "Remover capa" minimalista, so no hover (sempre visivel no toque). */
+.cardmodal__header.has-cover-color .cardmodal__close {
+  background: transparent;
+  backdrop-filter: none;
+  color: var(--cover-fg, #f4f5f7);
+}
+@media (hover: hover) {
+  .cardmodal__header.has-cover-color .cardmodal__close:hover {
+    background: color-mix(in srgb, var(--cover-fg, #fff) 16%, transparent);
+  }
+}
+.cardmodal__header.has-cover-color .cardmodal__close.is-open {
+  background: color-mix(in srgb, var(--cover-fg, #fff) 20%, transparent);
+}
+.cardmodal__header.has-cover-color .cardmodal__cover-actions button {
+  border: 1px solid color-mix(in srgb, var(--cover-fg, #fff) 38%, transparent);
+  background: transparent;
+  backdrop-filter: none;
+  color: var(--cover-fg, #f4f5f7);
+}
+@media (hover: hover) {
+  .cardmodal__header.has-cover-color .cardmodal__cover-actions {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+  .cardmodal__header.has-cover-color:hover .cardmodal__cover-actions,
+  .cardmodal__header.has-cover-color:focus-within .cardmodal__cover-actions {
+    opacity: 1;
+  }
+  .cardmodal__header.has-cover-color .cardmodal__cover-actions button:hover {
+    background: color-mix(in srgb, var(--cover-fg, #fff) 14%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardmodal__header.has-cover-color .cardmodal__cover-actions {
+    transition: none;
+  }
+}
+.cardmodal__cover-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+.cardmodal__cover-actions button,
+.cardmodal__reposbar button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cardmodal__cover-actions button:hover,
+  .cardmodal__reposbar button:hover {
+    background: rgba(0, 0, 0, 0.78);
+  }
+}
+.cardmodal__cover-actions button:focus-visible,
+.cardmodal__reposbar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.cardmodal__reposbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-left: 44px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.5);
 }
-.cardmodal__hero-label {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--modal-bg) 76%, transparent),
-    0 2px 8px -3px currentColor;
+.cardmodal__reposbar span {
+  flex: 1;
+  color: rgba(244, 245, 247, 0.78);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+.cardmodal__reposbar button.is-primary {
+  background: var(--accent);
+}
+.cardmodal__cover {
+  position: relative;
+}
+.cardmodal__cover--color {
+  height: 110px;
+}
+.cardmodal__cover--image {
+  height: 200px;
+  background: var(--lane-bg);
+}
+.cardmodal__cover--image .attimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+.cardmodal__cover-drag {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.cardmodal__cover-drag:active {
+  cursor: grabbing;
+}
+.cardmodal__cover-drag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+.cardmodal__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Popover de capa */
+.coverpop__colors {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.coverpop__color {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  color: #fff;
+  cursor: pointer;
+}
+.coverpop__color.is-selected {
+  border-color: var(--fg);
+}
+.coverpop__color:focus-visible,
+.coverpop__image:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.coverpop__images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.coverpop__image {
+  height: 54px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: var(--lane-bg);
+  cursor: pointer;
+}
+.coverpop__image.is-selected {
+  border-color: var(--accent);
+}
+.coverpop__image .attimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.coverpop__upload,
+.coverpop__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.coverpop__upload:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .coverpop__upload:not(:disabled):hover,
+  .coverpop__remove:hover {
+    border-color: var(--accent);
+  }
+}
+.coverpop__error {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* Secao Anexos */
+.attachments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0 0 0 29px;
+  list-style: none;
+}
+.attrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.attrow__thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88px;
+  height: 60px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+.attrow__thumb .attimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.attrow__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.attrow__name {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 750;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.attrow__meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+.attrow__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.attrow__actions button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.attrow__actions button.is-danger {
+  color: var(--accent);
+}
+@media (hover: hover) {
+  .attrow__actions button:hover,
+  .attrow__name:hover {
+    color: var(--fg);
+  }
+}
+.attrow__thumb:focus-visible,
+.attrow__name:focus-visible,
+.attrow__actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .cardmodal__top {
   display: flex;
@@ -2662,24 +3129,45 @@ button.account-menu__item:focus-visible {
   font-weight: 700;
   color: var(--fg);
 }
+.cardmodal__section-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cardmodal__section-edit:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+}
+.cardmodal__section-edit--outline {
+  padding: 6px 13px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  color: var(--fg);
+}
+.cardmodal__section-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cardmodal__section-edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 /* Descricao — modo leitura (markdown renderizado) e vazio */
 .cardmodal__desc-read {
   width: 100%;
-  min-height: 56px;
-  padding: 12px 15px;
-  border: 1px solid var(--field-border);
-  border-radius: 12px;
-  background: var(--field-bg);
-  box-shadow: var(--field-inset);
-  cursor: text;
-  transition: border-color 0.15s ease;
-}@media (hover: hover) {
-.cardmodal__desc-read:hover {
-  border-color: var(--accent);
-}}
-.cardmodal__desc-read:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  padding: 1px 0 3px;
 }
 .cardmodal__desc-empty {
   width: 100%;
@@ -2792,26 +3280,6 @@ button.account-menu__item:focus-visible {
   background: var(--field-bg);
   padding: 0 9px;
 }
-.checkitem__due {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid var(--field-border);
-  border-radius: 7px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  white-space: nowrap;
-}
-.checkitem__due--empty {
-  width: 0;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-}
 .checkitem__remove {
   display: grid;
   place-items: center;
@@ -2909,134 +3377,6 @@ button.account-menu__item:focus-visible {
   background: var(--hover);
   color: var(--fg);
 }}
-.checklist__date {
-  margin-left: auto;
-}
-.checklist__date.is-open {
-  background: var(--hover);
-  color: var(--fg);
-}
-.checklist__date-panel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  align-self: flex-end;
-  width: fit-content;
-  padding: 8px;
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  background: #202124;
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
-}
-.checklist__date-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-.checklist__date-input {
-  width: 46px;
-  height: 32px;
-  border: 1px solid var(--field-border);
-  border-radius: 8px;
-  background: var(--field-bg);
-  color: var(--fg);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 750;
-  padding: 0 8px;
-  text-align: center;
-}
-.checklist__date-input:focus {
-  outline: none;
-  border-color: var(--field-border-focus);
-  box-shadow: 0 0 0 3px var(--field-focus-ring);
-}
-.checklist__month-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 32px;
-  min-width: 124px;
-  border: 1px solid var(--field-border);
-  border-radius: 8px;
-  background: var(--field-bg);
-  color: var(--fg);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 750;
-  padding: 0 8px 0 10px;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-.checklist__month-trigger svg {
-  color: var(--muted);
-  transition: transform 0.15s ease;
-}
-.checklist__month-trigger[aria-expanded="true"] {
-  border-color: var(--field-border-focus);
-}
-.checklist__month-trigger[aria-expanded="true"] svg {
-  transform: rotate(180deg);
-}
-.checklist__month-trigger.is-placeholder {
-  color: var(--muted);
-}
-.month-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 248px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.month-opt {
-  width: 100%;
-  text-align: left;
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--fg);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-}@media (hover: hover) {
-.month-opt:hover {
-  background: var(--hover);
-}}
-.month-opt.is-active {
-  background: var(--hover);
-  color: var(--accent);
-  font-weight: 800;
-}
-.checklist__date-save {
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--field-border);
-  border-radius: 8px;
-  background: var(--btn-neutral);
-  color: var(--btn-neutral-fg);
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-.checklist__date-save:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}@media (hover: hover) {
-.checklist__date-save:not(:disabled):hover {
-  background: var(--btn-neutral-hover);
-}}
-
 /* Markdown renderizado */
 .md-rendered {
   font-size: 14px;
@@ -3141,6 +3481,7 @@ button.account-menu__item:focus-visible {
   gap: 2px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--field-border);
+  background: color-mix(in srgb, var(--field-bg) 70%, #000);
 }
 .mde__btn {
   flex: none;
@@ -3253,7 +3594,7 @@ button.account-menu__item:focus-visible {
   color: var(--fg);
 }
 .mde__editor {
-  max-height: 300px;
+  max-height: 460px;
   padding: 0;
 }
 .mde__prose {
@@ -3273,34 +3614,783 @@ button.account-menu__item:focus-visible {
   margin: 0.25em 0;
   min-height: 1.6em;
 }
-/* Ao DIGITAR, os titulos ficam em tamanho uniforme (sem texto gigante), mas o
-   MARCADOR (#, ##, ###) reaparece como indicador do nivel — o usuario sempre
-   sabe que aquela linha e um titulo e de qual nivel. O tamanho real aparece
-   so na visualizacao (.md-rendered). */
+/* Edicao WYSIWYG: titulos no MESMO tamanho da leitura (.md-rendered). */
 .mde__prose h1,
 .mde__prose h2,
 .mde__prose h3 {
-  margin: 0.25em 0;
+  margin: 0.6em 0 0.35em;
   color: var(--fg);
-  font-size: 15px;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1.25;
 }
-.mde__prose h1::before,
-.mde__prose h2::before,
-.mde__prose h3::before {
+.mde__prose h1 {
+  font-size: 1.5em;
+}
+.mde__prose h2 {
+  font-size: 1.28em;
+}
+.mde__prose h3 {
+  font-size: 1.1em;
+}
+.mde__spacer {
+  flex: 1;
+}
+.mde__error {
+  margin: 0;
+  padding: 6px 12px 0;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+/* Imagens na descricao (editor e leitura) */
+.md-img,
+.mde__image .attimg {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  margin: 0.6em 0;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.mde__image {
+  margin: 0.6em 0;
+}
+.mde__image .md-img,
+.mde__image .attimg {
+  margin: 0;
+}
+.mde__image.is-selected .attimg,
+.mde__image.is-selected .md-img {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.md-img.attimg--placeholder {
+  width: 100%;
+  height: 140px;
+}
+.md-img--missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  padding: 10px 12px;
+  border: 1px dashed var(--field-border);
   color: var(--muted);
+  font-size: 13px;
+}
+/* Dialogos de Link / Imagem do editor */
+.mdedlg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mdedlg__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.mdedlg__field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 7px;
+  background: var(--field-bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.mdedlg__field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.mdedlg__field input[aria-invalid="true"] {
+  border-color: var(--accent);
+}
+.mdedlg__or {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.mdedlg__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.mdedlg__submit,
+.mdedlg__cancel {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.mdedlg__submit {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+.mdedlg__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mdedlg__cancel {
+  border: 1px solid var(--field-border);
+  background: transparent;
+  color: var(--fg);
+}
+.mdedlg__submit:focus-visible,
+.mdedlg__cancel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ===== Tipografia do cartao (referencia: Trello) =====
+   Open Sans com pesos leves: corpo 400, titulos 600, botoes/rotulos 500-600.
+   Seletores prefixados por .cardmodal/.kpop para vencer as regras acima. */
+.cardmodal,
+.kpop {
+  font-family: "Open Sans", system-ui, -apple-system, sans-serif;
+}
+.cardmodal .cardmodal__title {
   font-weight: 600;
-  user-select: none;
 }
-.mde__prose h1::before {
-  content: "# ";
+.cardmodal .cardmodal__daypill,
+.cardmodal .cardmodal__section-title,
+.cardmodal .cardmodal__label-title,
+.cardmodal .checklist__title,
+.cardmodal .cardmodal__save,
+.cardmodal .cardmodal__delete,
+.kpop .kpop__title,
+.kpop .kpop__section-label {
+  font-weight: 600;
 }
-.mde__prose h2::before {
-  content: "## ";
+.cardmodal .cardmodal__section-edit,
+.cardmodal .cardmodal__action,
+.cardmodal .cardmodal__cover-actions button,
+.cardmodal .cardmodal__reposbar button,
+.cardmodal .attrow__name,
+.cardmodal .attrow__actions button,
+.kpop .kpop__swatch,
+.kpop .kmenu__item,
+.kpop .coverpop__upload,
+.kpop .coverpop__remove,
+.kpop .mdedlg__submit,
+.kpop .mdedlg__cancel,
+.kpop .mdedlg__field {
+  font-weight: 500;
 }
-.mde__prose h3::before {
-  content: "### ";
+.cardmodal .md-rendered,
+.cardmodal .mde__prose {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.7;
+}
+.cardmodal .md-rendered strong,
+.cardmodal .mde__prose strong {
+  font-weight: 700;
+}
+.cardmodal .md-rendered h1,
+.cardmodal .md-rendered h2,
+.cardmodal .md-rendered h3,
+.cardmodal .mde__prose h1,
+.cardmodal .mde__prose h2,
+.cardmodal .mde__prose h3 {
+  margin: 1.15em 0 0.45em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.cardmodal .md-rendered h1,
+.cardmodal .mde__prose h1 {
+  font-size: 1.6em;
+}
+.cardmodal .md-rendered h2,
+.cardmodal .mde__prose h2 {
+  font-size: 1.35em;
+}
+.cardmodal .md-rendered p,
+.cardmodal .mde__prose p {
+  margin: 0.55em 0;
+}
+.cardmodal .md-rendered h3,
+.cardmodal .mde__prose h3 {
+  font-size: 1.15em;
+}
+.cardmodal .md-rendered h4,
+.cardmodal .md-rendered h5,
+.cardmodal .md-rendered h6,
+.cardmodal .mde__prose h4,
+.cardmodal .mde__prose h5,
+.cardmodal .mde__prose h6 {
+  margin: 1em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.cardmodal .md-rendered h4,
+.cardmodal .mde__prose h4 {
+  font-size: 1em;
+}
+.cardmodal .md-rendered h5,
+.cardmodal .mde__prose h5 {
+  font-size: 0.9em;
+}
+.cardmodal .md-rendered h6,
+.cardmodal .mde__prose h6 {
+  font-size: 0.82em;
+  color: var(--muted);
+}
+
+/* ===== Menu padrao do app (MenuList) =====
+   Referencia: menus do editor do Trello. Item ativo com fundo destacado;
+   item rico (icone em caixa + titulo + descricao) com barra lateral no foco. */
+.kpop.kpop--mlist {
+  gap: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+}
+.mlist {
+  display: flex;
+  flex-direction: column;
+}
+.mlist__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.mlist__item--rich {
+  min-height: 56px;
+  padding: 9px 14px;
+}
+@media (hover: hover) {
+  .mlist__item:hover {
+    background: var(--hover);
+  }
+}
+.mlist__item:focus-visible,
+.mlist__item:focus {
+  outline: none;
+  background: var(--hover);
+}
+.mlist__item.is-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.mlist__item--rich:focus::before,
+.mlist__item.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--accent);
+}
+.mlist__glyph {
+  display: inline-flex;
+  flex: none;
+  color: var(--muted);
+}
+.mlist__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  color: var(--fg);
+}
+.mlist__label {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.mlist__label--h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+.mlist__label--h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.mlist__label--h3 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.mlist__label--h4 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mlist__label--h5 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mlist__label--h6 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.mlist__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.mlist__title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.mlist__desc {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.mlist__kbd {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+@media (hover: none) {
+  .mlist__kbd {
+    display: none;
+  }
+}
+.mde__tt {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ===== Datas do cartao ===== */
+.kcheck.kcheck--square {
+  border-radius: 4px;
+}
+.cardmodal__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+}
+.cardmodal__dates-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cardmodal__dates-chip:hover {
+    background: var(--hover);
+  }
+}
+.cardmodal__dates-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.duebadge__tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.duebadge__tag.is-overdue {
+  background: #c9372c;
+  color: #fff;
+}
+.duebadge__tag.is-soon {
+  background: #e2b203;
+  color: #172b4d;
+}
+.duebadge__tag.is-done {
+  background: #1f845a;
+  color: #fff;
+}
+/* Selo de data no cartao do quadro */
+.duebadge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.duebadge.is-overdue {
+  background: #c9372c;
+  color: #fff;
+}
+.duebadge.is-soon {
+  background: #e2b203;
+  color: #172b4d;
+}
+.duebadge.is-done {
+  background: #1f845a;
+  color: #fff;
+}
+.kcard.has-cover-color .duebadge:not([class*="is-"]) {
+  color: var(--kcard-cover-fg);
+}
+/* Popover de datas */
+.datespop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.datespop__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.datespop__nav button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .datespop__nav button:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+}
+.datespop__month {
+  flex: 1;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.datespop__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+.datespop__weekday {
+  padding: 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.datespop__day {
+  position: relative;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 400;
+  cursor: pointer;
+}
+.datespop__day.is-muted {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+@media (hover: hover) {
+  .datespop__day:hover {
+    background: var(--hover);
+  }
+}
+.datespop__day.is-today::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.datespop__day.is-range {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 0;
+}
+.datespop__day.is-selected {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--fg);
+  font-weight: 600;
+}
+.datespop__day:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.datespop__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.datespop__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.datespop__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.datespop__input {
+  width: 116px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+}
+.datespop__input--time {
+  width: 76px;
+}
+.datespop__input:disabled {
+  opacity: 0.5;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+.datespop__input.is-focus,
+.datespop__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.datespop__save,
+.datespop__remove {
+  width: 100%;
+  height: 36px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.datespop__save {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+.datespop__remove {
+  margin-top: -4px;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  background: transparent;
+  color: var(--fg);
+}
+@media (hover: hover) {
+  .datespop__remove:hover {
+    background: var(--hover);
+  }
+}
+.datespop__save:focus-visible,
+.datespop__remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Conteudo da descricao alinhado ao texto "Descricao" (icone 18 + gap 11). */
+.cardmodal .cardmodal__desc-wrap,
+.cardmodal .cardmodal__desc-empty,
+.cardmodal .mde {
+  margin-left: 29px;
+  width: calc(100% - 29px);
+}
+.cardmodal .cardmodal__desc-read {
+  width: 100%;
+}
+.cardmodal .cardmodal__desc-read.is-clipped:not(.is-expanded),
+.cardmodal .cardmodal__desc-read:not(.is-expanded) {
+  max-height: 420px;
+  overflow: hidden;
+}
+.cardmodal .cardmodal__desc-read.is-clipped:not(.is-expanded) {
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+}
+.cardmodal__desc-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 36px;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cardmodal__desc-more:hover {
+    background: var(--hover);
+  }
+}
+.cardmodal__desc-more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Editor aberto: mesma linguagem limpa do campo vazio — fundo do modal,
+   borda fina cinza e icones suaves. O editor cresce com o texto (sem rolagem
+   propria) e a barra gruda no topo do corpo rolavel enquanto o editor passa. */
+.cardmodal .mde {
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 8px;
+  background: transparent;
+}
+.cardmodal .mde:focus-within {
+  border-color: color-mix(in srgb, var(--fg) 42%, transparent);
+}
+.cardmodal .mde__toolbar {
+  position: sticky;
+  /* Compensa o padding-top do corpo rolavel: gruda rente a capa, sem vao. */
+  top: -18px;
+  z-index: 3;
+  border-radius: 8px 8px 0 0;
+  background: var(--modal-bg);
+  border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent);
+}
+.cardmodal .mde__editor {
+  max-height: none;
+  overflow: visible;
+}
+.cardmodal .mde__btn {
+  color: var(--muted);
+}
+@media (hover: hover) {
+  .cardmodal .mde__btn:hover {
+    color: var(--fg);
+  }
+}
+.cardmodal .mde__btn.is-active {
+  color: var(--fg);
+}
+
+/* Checklist no padrao do cartao: pesos leves, sem fundos escuros. */
+.cardmodal .checklist__delete,
+.cardmodal .checklist__add-placeholder,
+.cardmodal .checklist__cancel {
+  border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 500;
+}
+.cardmodal .checklist__cancel {
+  border-color: transparent;
+}
+.cardmodal .checklist__progress {
+  font-weight: 500;
+}
+.cardmodal .checkitem__text {
+  font-weight: 400;
+}
+.cardmodal .checklist__input {
+  border-color: color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.cardmodal .checklist__input:focus {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.cardmodal .checklist__add {
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .cardmodal .checklist__add:hover {
+    background: color-mix(in srgb, var(--accent) 86%, #000);
+  }
+  .cardmodal .checklist__delete:hover,
+  .cardmodal .checklist__add-placeholder:hover,
+  .cardmodal .checklist__cancel:hover {
+    border-color: color-mix(in srgb, var(--fg) 36%, transparent);
+    background: var(--hover);
+  }
+}
+/* Botoes do popover de Capa (Enviar imagem / Remover capa) sem fundo escuro. */
+.kpop .coverpop__upload,
+.kpop .coverpop__remove {
+  border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .kpop .coverpop__upload:not(:disabled):hover,
+  .kpop .coverpop__remove:hover {
+    border-color: color-mix(in srgb, var(--fg) 36%, transparent);
+    background: var(--hover);
+  }
+}
+
+/* Campo vazio: limpo, sem caixa escura (borda fina, fundo do modal). */
+.cardmodal .cardmodal__desc-empty {
+  display: flex;
+  align-items: flex-start;
+  min-height: 64px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 400;
+}
+@media (hover: hover) {
+  .cardmodal .cardmodal__desc-empty:hover {
+    border-color: color-mix(in srgb, var(--fg) 45%, transparent);
+    background: var(--hover);
+  }
+}
+.cardmodal .cardmodal__desc-empty:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .mde__prose ul,
 .mde__prose ol {
@@ -3687,27 +4777,29 @@ button.account-menu__item:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-width: 52px;
+  min-width: 48px;
   max-width: 180px;
-  height: 34px;
+  height: 32px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--label-color) 46%, var(--field-border));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--label-color) 12%, var(--field-bg));
-  color: var(--fg);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-.cardmodal__label i {
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 4px;
+  /* Etiqueta solida: a cor preenche tudo e o nome vai em texto puro dentro. */
   background: var(--label-color);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--label-color) 18%, transparent);
+  color: var(--label-fg, #fff);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
+}
+@media (hover: hover) {
+  .cardmodal__label:hover {
+    filter: brightness(1.12);
+  }
+}
+.cardmodal__label:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
 }
 .cardmodal__label[draggable="true"] {
   cursor: grab;
@@ -3955,6 +5047,54 @@ button.account-menu__item:focus-visible {
   background: var(--hover);
   border-color: var(--accent);
 }}
+
+/* Lista do popover de Etiquetas (referencia Trello): barra solida com o nome
+   dentro, checkbox quadrado, lapis a direita e botao contornado. */
+.kpop--labels .kpop__search {
+  height: 36px;
+  border-color: color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 6px;
+  background: transparent;
+}
+.kpop--labels .kpop__search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.kpop--labels .kpop__labels {
+  gap: 6px;
+}
+.kpop--labels .kpop__label-row {
+  grid-template-columns: 18px 1fr 28px;
+  gap: 10px;
+}
+.kpop__swatch.kpop__swatch--solid {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--label-color);
+  color: var(--label-fg, #fff);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .kpop__swatch.kpop__swatch--solid:not(:disabled):hover {
+    border: 0;
+    background: var(--label-color);
+    filter: brightness(1.12);
+  }
+}
+.kpop__swatch.kpop__swatch--solid:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+.kpop__create-label.kpop__create-label--outline {
+  height: 36px;
+  margin-top: 4px;
+  border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  font-weight: 500;
+}
 
 /* ===== Alarmes do dia: sininho no header da coluna ===== */
 .lane__alarm {
@@ -4344,22 +5484,22 @@ button.account-menu__item:focus-visible {
   gap: 8px;
   max-width: 100%;
   height: 32px;
-  padding: 0 11px;
+  padding: 0 12px;
   margin: 4px 0 2px;
-  border: 1px dashed color-mix(in srgb, var(--label-color) 70%, var(--field-border));
-  border-radius: 8px;
+  /* Mesmo visual da etiqueta real: barra solida com o nome dentro. */
+  border: 0;
+  border-radius: 4px;
+  background: var(--label-color);
+  color: var(--label-fg, #fff);
+  font-size: 13.5px;
+}
+.label-form__preview.is-empty {
+  border: 1px solid color-mix(in srgb, var(--fg) 26%, transparent);
   background: transparent;
   color: var(--fg);
-  font-size: 13px;
-}
-.label-form__preview span {
-  width: 9px;
-  height: 9px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--label-color);
 }
 .label-form__preview strong {
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4502,6 +5642,77 @@ button.account-menu__item:focus-visible {
 .label-form__create:hover {
   background: var(--btn-neutral-hover);
 }}
+/* Pesos do formulario no padrao Open Sans do cartao (mais leves). */
+.kpop .label-form__field span,
+.kpop .label-form .kpop__section-label {
+  font-weight: 600;
+}
+.kpop .label-form__field input {
+  font-weight: 400;
+}
+.kpop .label-form__hex input {
+  font-weight: 500;
+}
+.kpop .label-form__hex,
+.kpop .label-form__remove,
+.kpop .label-form__custom,
+.kpop .label-form__color-picker {
+  font-weight: 500;
+}
+.kpop .label-form__create {
+  font-weight: 600;
+}
+/* Campos sem fundo escuro: transparente + borda fina, como o resto do cartao. */
+.kpop .label-form__field input,
+.kpop .label-form__color-picker,
+.kpop .label-form__hex,
+.kpop .label-form__remove {
+  border-color: color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.kpop .label-form__field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.kpop .label-form__remove--full {
+  width: 100%;
+  justify-content: center;
+}
+.label-form__delete {
+  width: 100%;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.label-form__delete.is-confirming {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+@media (hover: hover) {
+  .label-form__delete:not(.is-confirming):hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+}
+.label-form__delete:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .kpop .label-form__color-picker:hover,
+  .kpop .label-form__remove:hover {
+    background: var(--hover);
+  }
+}
 
 /* Seletor próprio: substitui o popup claro nativo por uma etapa escura,
    curta e explícita. A cor só volta ao editor após "Aplicar cor". */

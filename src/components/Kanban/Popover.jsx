@@ -55,6 +55,24 @@ export default function Popover({ anchorRef, onClose, children, width = 280, cla
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Conteudo mais alto que o espaco abaixo: sobe o popover o necessario para
+  // caber INTEIRO na janela (em vez de cortar e rolar por dentro).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !pos || pos.openUp || pos.fitted) return;
+    const margin = 8;
+    // scrollHeight nao inclui a borda: soma-la evita a barra de rolagem.
+    const natural = el.scrollHeight + (el.offsetHeight - el.clientHeight);
+    const available = window.innerHeight - pos.top - margin;
+    if (natural <= available) {
+      setPos({ ...pos, maxHeight: undefined, fitted: true });
+      return;
+    }
+    const top = Math.max(margin, window.innerHeight - margin - natural);
+    setPos({ ...pos, top, maxHeight: undefined, fitted: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pos]);
+
   // Entrada (GSAP) quando ja posicionado. Desliza a partir do gatilho: de
   // cima pra baixo no caso normal, de baixo pra cima quando `openUp`.
   useLayoutEffect(() => {

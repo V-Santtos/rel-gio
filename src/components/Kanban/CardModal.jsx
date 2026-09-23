@@ -9,13 +9,26 @@ import {
   Plus,
   CheckSquare,
   Clock,
-  ChevronDown,
   Sunrise,
   Sun,
   Moon,
   Check,
   Save,
+  Paperclip,
+  Image as ImageIcon,
+  ChevronDown,
+  MoreHorizontal,
+  Archive,
 } from "lucide-react";
+import AttachmentImage from "./AttachmentImage.jsx";
+import AttachmentsSection from "./AttachmentsSection.jsx";
+import CoverPopover from "./CoverPopover.jsx";
+import { NO_COVER, clamp01, readableTextOn, resolveCover } from "./cover.js";
+import { CardAttachmentsContext, DescriptionImage } from "./DescriptionImage.jsx";
+import { markdownUrlTransform } from "./markdownExtensions.js";
+import DatesPopover from "./DatesPopover.jsx";
+import { MenuItem, MenuList } from "../MenuList.jsx";
+import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Checkbox from "./Checkbox.jsx";
@@ -24,68 +37,6 @@ import MarkdownEditor from "./MarkdownEditor.jsx";
 import Popover from "./Popover.jsx";
 import { getLabels, labelById, setLabels as persistLabels } from "./labels.js";
 import { makeClientId } from "../../lib/id.js";
-
-const formatDueDate = (value) => {
-  if (!value) return "Data de Entrega";
-  const [year, month, day] = value.split("-");
-  if (!year || !month || !day) return "Data de Entrega";
-  const monthLabel = MONTHS.find((item) => item.value === month)?.label?.toLowerCase();
-  if (!monthLabel) return "Data de Entrega";
-  return `${Number(day)} de ${monthLabel}`;
-};
-
-const dueDateParts = (value) => {
-  if (!value) return { day: "", month: "" };
-  const [, month, day] = value.split("-");
-  return { day: day || "", month: month || "" };
-};
-
-// "YYYY-MM-DD" -> "DD/MM" (ano omitido; é sempre o ano atual).
-const dueMaskFromDate = (value) => {
-  const { day, month } = dueDateParts(value);
-  return day && month ? `${day}/${month}` : "";
-};
-
-// Mantem so digitos (max 2) e, quando os 2 digitos estao completos, limita ao
-// intervalo valido: dia 01–31, mes 01–12. Com 1 digito ainda deixa digitar.
-const clampDuePart = (kind, value) => {
-  const digits = value.replace(/\D/g, "").slice(0, 2);
-  if (digits.length < 2) return digits;
-  const max = kind === "day" ? 31 : 12;
-  const number = Number(digits);
-  if (number < 1) return "01";
-  if (number > max) return String(max);
-  return digits;
-};
-
-const buildDueDate = ({ day, month }) => {
-  const year = new Date().getFullYear();
-  const dayNumber = Number(day);
-  const monthNumber = Number(month);
-  if (!dayNumber || !monthNumber) return "";
-  const date = new Date(year, monthNumber - 1, dayNumber);
-  const isValid =
-    date.getFullYear() === year &&
-    date.getMonth() === monthNumber - 1 &&
-    date.getDate() === dayNumber;
-  if (!isValid) return "";
-  return `${year}-${String(monthNumber).padStart(2, "0")}-${String(dayNumber).padStart(2, "0")}`;
-};
-
-const MONTHS = [
-  { value: "01", label: "Janeiro" },
-  { value: "02", label: "Fevereiro" },
-  { value: "03", label: "Março" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Maio" },
-  { value: "06", label: "Junho" },
-  { value: "07", label: "Julho" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
-];
 
 function splitHighlightSyntax(value) {
   const parts = [];
@@ -136,7 +87,7 @@ function rehypeHighlightSyntax() {
  * dia, circulo + titulo, secao Descricao), na identidade do projeto (superficie
  * com profundidade, accent vermelho) e seguindo as Web Interface Guidelines:
  * Escape, foco preso, inert no fundo, retorno de foco, overscroll contido e
- * prefers-reduced-motion. Markdown na descricao e fase posterior (Camada 3).
+ * prefers-reduced-motion. A descrição alterna entre leitura e edição explícita.
  */
 const PERIOD_OPTS = [
   { key: "morning", label: "Manhã", Icon: Sunrise },
@@ -149,10 +100,13 @@ export default function CardModal({
   day,
   weekMode = false,
   labelCatalog = null,
+  attachmentsApi = null,
   onCreateLabel,
   onUpdateLabel,
+  onDeleteLabel,
   onChange,
   onDelete,
+  onArchive,
   onClose,
 }) {
   const backdropRef = useRef(null);
@@ -160,23 +114,38 @@ export default function CardModal({
   const titleRef = useRef(null);
   const labelsBtnRef = useRef(null);
   const periodBtnRef = useRef(null);
-  const monthBtnRef = useRef(null);
+  const coverBtnRef = useRef(null);
+  const datesBtnRef = useRef(null);
+  const bodyRef = useRef(null);
+  const titleRowRef = useRef(null);
+  const stickyBarRef = useRef(null);
+  const addBtnRef = useRef(null);
+  const moreBtnRef = useRef(null);
+  const [compact, setCompact] = useState(false);
+  // Popover aberto a partir do "+ Adicionar" da barra compacta ancora nele.
+  const [menuFromBar, setMenuFromBar] = useState(false);
+  const attachInputRef = useRef(null);
   const closingRef = useRef(false);
+  const coverDragRef = useRef(null);
 
   // Modelo rascunho->commit: tudo edita um draft local; X/Esc/clique-fora
   // descartam, so o botao Salvar comita (onChange) o card de volta na coluna.
-  const [draft, setDraft] = useState(card);
+  // Excecao: anexos sao gravados na hora (como no Trello) e entram no draft.
+  const [draft, setDraft] = useState(() => ({
+    ...card,
+    cover: card.cover || NO_COVER,
+    attachments: card.attachments || [],
+  }));
   const patch = (p) => setDraft((d) => ({ ...d, ...p }));
 
-  const [menu, setMenu] = useState(null); // null | "labels" | "period"
+  const [menu, setMenu] = useState(null); // null | "labels" | "period" | "cover"
   const [descEditing, setDescEditing] = useState(false);
   const [periodError, setPeriodError] = useState(false);
+  const [repositioning, setRepositioning] = useState(false);
+  const descReadRef = useRef(null);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descOverflows, setDescOverflows] = useState(false);
   const [availableLabels, setAvailableLabels] = useState(() => labelCatalog || getLabels());
-  const [duePickerListId, setDuePickerListId] = useState(null);
-  const [dueTextByList, setDueTextByList] = useState({});
-  // Mobile: texto cru "dd/mm" digitado no campo (mascara local enquanto digita).
-  const [dueMaskByList, setDueMaskByList] = useState({});
-  const [monthOpen, setMonthOpen] = useState(false);
   const [dragLabelId, setDragLabelId] = useState(null);
 
   useEffect(() => {
@@ -186,12 +155,97 @@ export default function CardModal({
   }, [labelCatalog]);
 
   const labels = draft.labels || [];
-  const headerLabels = labels
-    .map((id) => availableLabels.find((item) => item.id === id) || labelById(id))
-    .filter((label) => label?.color && label.color !== "transparent")
-    .slice(0, 4);
-  const headerLabel = headerLabels[0] || null;
   const checklists = draft.checklists || [];
+  const attachments = draft.attachments || [];
+  const cover = resolveCover(draft.cover, attachments);
+  const canUpload = Boolean(attachmentsApi?.enabled);
+  const hasDates = Boolean(draft.startDate || draft.dueAt);
+  // Editando a descricao, quem gruda no topo e a barra do editor.
+  const showBar = compact && !descEditing;
+  const status = dueStatus(draft);
+
+  const setCover = (next) => {
+    patch({ cover: next });
+    if (next.type !== "image") setRepositioning(false);
+  };
+
+  const repositionStart = useRef(null);
+  const startReposition = () => {
+    repositionStart.current = { x: cover.x, y: cover.y };
+    setMenu(null);
+    setRepositioning(true);
+  };
+  const cancelReposition = () => {
+    const start = repositionStart.current;
+    if (start) patch({ cover: { ...draft.cover, ...start } });
+    setRepositioning(false);
+  };
+
+  const uploadAttachment = async (file) => {
+    const att = await attachmentsApi.upload(draft, file);
+    setDraft((d) => ({ ...d, attachments: [...(d.attachments || []), att] }));
+    return att;
+  };
+
+  const removeAttachment = async (att) => {
+    await attachmentsApi.remove(draft, att);
+    setDraft((d) => ({
+      ...d,
+      attachments: (d.attachments || []).filter((item) => item.id !== att.id),
+      cover:
+        d.cover?.type === "image" && d.cover.attachmentId === att.id ? NO_COVER : d.cover,
+    }));
+  };
+
+  const toggleCoverAttachment = (att) => {
+    if (cover.type === "image" && cover.attachmentId === att.id) setCover(NO_COVER);
+    else setCover({ type: "image", attachmentId: att.id, x: 0.5, y: 0.5 });
+  };
+
+  // Reposicionar: arrastar a imagem move o ponto focal (object-position) em
+  // coordenadas normalizadas 0..1; setas do teclado fazem o mesmo em passos.
+  const onCoverPointerDown = (event) => {
+    if (!repositioning || cover.type !== "image") return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const rect = event.currentTarget.getBoundingClientRect();
+    coverDragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      x: cover.x,
+      y: cover.y,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+  const onCoverPointerMove = (event) => {
+    const drag = coverDragRef.current;
+    if (!drag) return;
+    const x = clamp01(drag.x - (event.clientX - drag.startX) / drag.width);
+    const y = clamp01(drag.y - (event.clientY - drag.startY) / drag.height);
+    patch({ cover: { ...draft.cover, x, y } });
+  };
+  const onCoverPointerUp = () => {
+    coverDragRef.current = null;
+  };
+  const onCoverKeyDown = (event) => {
+    const step = 0.05;
+    const delta = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    }[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    patch({
+      cover: {
+        ...draft.cover,
+        x: clamp01(cover.x + delta[0]),
+        y: clamp01(cover.y + delta[1]),
+      },
+    });
+  };
   const toggleLabel = (id) => {
     const isSelected = labels.includes(id);
     if (!isSelected && labels.length >= 4) return;
@@ -217,6 +271,16 @@ export default function CardModal({
       return next;
     });
     onUpdateLabel?.(label);
+  };
+
+  const deleteLabel = (labelId) => {
+    setAvailableLabels((current) => {
+      const next = current.filter((item) => item.id !== labelId);
+      persistLabels(next);
+      return next;
+    });
+    patch({ labels: labels.filter((id) => id !== labelId) });
+    onDeleteLabel?.(labelId);
   };
 
   const reorderLabels = (fromId, toId) => {
@@ -268,17 +332,9 @@ export default function CardModal({
           id: makeClientId(),
           text,
           done: false,
-          dueDate: list.draftDueDate || "",
         },
       ],
-      draftDueDate: "",
     });
-    setDuePickerListId(null);
-    setDueTextByList((current) => ({
-      ...current,
-      [list.id]: { day: "", month: "" },
-    }));
-    setDueMaskByList((current) => ({ ...current, [list.id]: "" }));
   };
 
   const patchChecklistItem = (listId, itemId, patch) => {
@@ -306,50 +362,6 @@ export default function CardModal({
     );
   };
 
-  const toggleDuePicker = (list) => {
-    setMonthOpen(false);
-    setDuePickerListId((current) => (current === list.id ? null : list.id));
-    setDueTextByList((current) => ({
-      ...current,
-      [list.id]: dueDateParts(list.draftDueDate),
-    }));
-  };
-
-  const updateDueDraft = (list, patch) => {
-    const current = dueTextByList[list.id] || dueDateParts(list.draftDueDate);
-    const next = {
-      ...current,
-      ...Object.fromEntries(
-        Object.entries(patch).map(([key, value]) => [key, clampDuePart(key, value)])
-      ),
-    };
-    setDueTextByList((state) => ({ ...state, [list.id]: next }));
-  };
-
-  // Mobile: campo dd/mm digitado. Insere a "/" sozinho, e quando dia+mes estao
-  // completos monta a data com o ano atual (buildDueDate). Incompleto/invalido
-  // limpa o draftDueDate, mas o texto digitado permanece visivel.
-  const onDueMaskChange = (list, raw) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 4);
-    const day = clampDuePart("day", digits.slice(0, 2));
-    const month = clampDuePart("month", digits.slice(2, 4));
-    const masked = digits.length > 2 ? `${day}/${month}` : day;
-    setDueMaskByList((current) => ({ ...current, [list.id]: masked }));
-    const date =
-      day.length === 2 && month.length === 2
-        ? buildDueDate({ day, month })
-        : "";
-    patchChecklist(list.id, { draftDueDate: date });
-  };
-
-  const saveDraftDueDate = (list) => {
-    const nextDate = buildDueDate(dueTextByList[list.id] || dueDateParts(list.draftDueDate));
-    if (!nextDate) return;
-    patchChecklist(list.id, { draftDueDate: nextDate });
-    setMonthOpen(false);
-    setDuePickerListId(null);
-  };
-
   const reduce = () =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // No mobile o painel vira bottom sheet (sobe de baixo); no desktop continua
@@ -362,6 +374,70 @@ export default function CardModal({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+  };
+
+  // Descricao longa nasce recolhida (limite no CSS) com "Mostrar mais".
+  useLayoutEffect(() => {
+    const el = descReadRef.current;
+    if (descEditing || !el) {
+      setDescOverflows(false);
+      return undefined;
+    }
+    const measure = () => setDescOverflows(el.scrollHeight > el.clientHeight + 4);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [descEditing, draft.description, descExpanded]);
+
+  // Barra compacta: aparece quando a linha do titulo sai do topo do corpo.
+  useEffect(() => {
+    const root = bodyRef.current;
+    const target = titleRowRef.current;
+    if (!root || !target) return undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const above = entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0);
+        setCompact(!entry.isIntersecting && above);
+      },
+      { root, threshold: 0 }
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const bar = stickyBarRef.current;
+    if (!bar) return;
+    if (showBar) bar.removeAttribute("inert");
+    else bar.setAttribute("inert", "");
+    const r = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Desliza de baixo da capa (o wrapper recorta), sem fade no meio do caminho.
+    if (showBar) {
+      gsap.set(bar, { autoAlpha: 1 });
+      gsap.fromTo(
+        bar,
+        { yPercent: -100 },
+        { yPercent: 0, duration: r ? 0 : 0.26, ease: "power3.out", overwrite: true }
+      );
+    } else {
+      gsap.to(bar, {
+        yPercent: -100,
+        duration: r ? 0 : 0.2,
+        ease: "power2.in",
+        overwrite: true,
+        onComplete: () => gsap.set(bar, { autoAlpha: 0 }),
+      });
+    }
+  }, [showBar]);
+
+  useEffect(() => {
+    if (menu === null) setMenuFromBar(false);
+  }, [menu]);
+
+  const openFromBar = (next) => {
+    setMenuFromBar(true);
+    setMenu(next);
   };
 
   // Entrada (GSAP) + foco inicial no painel.
@@ -446,10 +522,10 @@ export default function CardModal({
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
-        if (monthOpen) {
-          setMonthOpen(false);
-        } else if (menu) {
+        if (menu) {
           setMenu(null);
+        } else if (repositioning) {
+          cancelReposition();
         } else if (descEditing) {
           setDescEditing(false);
         } else {
@@ -477,7 +553,7 @@ export default function CardModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menu, descEditing, monthOpen]);
+  }, [menu, descEditing, repositioning]);
 
   return createPortal(
     <div
@@ -494,24 +570,142 @@ export default function CardModal({
         tabIndex={-1}
       >
         <div
-          className={`cardmodal__hero${headerLabel ? " has-label" : ""}${
-            headerLabels.length > 1 ? " has-multiple-labels" : ""
+          className={`cardmodal__header${
+            cover.type !== "none" ? ` has-cover has-cover-${cover.type}` : ""
           }`}
-          style={headerLabel ? { "--cardmodal-label-color": headerLabel.color } : undefined}
+          style={
+            cover.type === "color" ? { "--cover-fg": readableTextOn(cover.color) } : undefined
+          }
         >
-        <div className="cardmodal__top">
-          {day ? <span className="cardmodal__daypill">{day}</span> : <span />}
-          <button
-            type="button"
-            className="cardmodal__close"
-            onClick={close}
-            aria-label="Fechar"
-          >
-            <X size={18} strokeWidth={2.4} />
-          </button>
+          {cover.type === "color" ? (
+            <div
+              className="cardmodal__cover cardmodal__cover--color"
+              style={{ background: cover.color }}
+              aria-hidden="true"
+            />
+          ) : null}
+          {cover.type === "image" ? (
+            <div className="cardmodal__cover cardmodal__cover--image">
+              <AttachmentImage
+                attachment={cover.attachment}
+                alt={`Capa: ${cover.attachment.name}`}
+                style={{ objectPosition: `${cover.x * 100}% ${cover.y * 100}%` }}
+                draggable={false}
+              />
+              {repositioning ? (
+                <div
+                  className="cardmodal__cover-drag"
+                  role="application"
+                  tabIndex={0}
+                  aria-label="Reposicionar capa: arraste a imagem ou use as setas"
+                  onPointerDown={onCoverPointerDown}
+                  onPointerMove={onCoverPointerMove}
+                  onPointerUp={onCoverPointerUp}
+                  onPointerCancel={onCoverPointerUp}
+                  onKeyDown={onCoverKeyDown}
+                />
+              ) : null}
+            </div>
+          ) : null}
+
+          {repositioning ? (
+            <div className="cardmodal__reposbar">
+              <span>Arraste para reposicionar</span>
+              <button type="button" onClick={cancelReposition}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="is-primary"
+                onClick={() => setRepositioning(false)}
+              >
+                Aplicar
+              </button>
+            </div>
+          ) : (
+            <div className="cardmodal__top">
+              {day ? <span className="cardmodal__daypill">{day}</span> : <span />}
+              <div className="cardmodal__top-tools">
+                <button
+                  type="button"
+                  ref={coverBtnRef}
+                  className={`cardmodal__close${menu === "cover" ? " is-open" : ""}`}
+                  aria-label="Capa"
+                  title="Capa"
+                  aria-haspopup="dialog"
+                  aria-expanded={menu === "cover"}
+                  onClick={() => setMenu(menu === "cover" ? null : "cover")}
+                >
+                  <ImageIcon size={17} strokeWidth={2.2} />
+                </button>
+                <button
+                  type="button"
+                  ref={moreBtnRef}
+                  className={`cardmodal__close${menu === "more" ? " is-open" : ""}`}
+                  aria-label="Mais ações"
+                  title="Mais ações"
+                  aria-haspopup="menu"
+                  aria-expanded={menu === "more"}
+                  onClick={() => setMenu(menu === "more" ? null : "more")}
+                >
+                  <MoreHorizontal size={18} strokeWidth={2.2} />
+                </button>
+                <button
+                  type="button"
+                  className="cardmodal__close"
+                  onClick={close}
+                  aria-label="Fechar"
+                >
+                  <X size={18} strokeWidth={2.4} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {cover.type !== "none" && !repositioning ? (
+            <div className="cardmodal__cover-actions">
+              {cover.type === "image" ? (
+                <button type="button" onClick={startReposition}>
+                  Reposicionar
+                </button>
+              ) : null}
+              <button type="button" onClick={() => setCover(NO_COVER)}>
+                Remover capa
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <div className="cardmodal__title-row">
+        {/* Cabecalho (capa + ferramentas) fica fixo; so o corpo rola. Ao rolar
+            e o titulo sair de vista, a barra compacta aparece por cima. */}
+        <div className="cardmodal__bodywrap">
+        <div
+          ref={stickyBarRef}
+          className={`cardmodal__stickybar${showBar ? " is-visible" : ""}`}
+          aria-hidden={!showBar}
+        >
+          <Checkbox
+            checked={!!draft.done}
+            onChange={(v) => patch({ done: v })}
+            size={18}
+            label={draft.done ? "Marcar como não feito" : "Marcar como feito"}
+          />
+          <span className="cardmodal__stickybar-title">{draft.title || "Sem título"}</span>
+          <button
+            type="button"
+            ref={addBtnRef}
+            className={`cardmodal__action${menu === "add" ? " is-open" : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={menu === "add"}
+            onClick={() => setMenu(menu === "add" ? null : "add")}
+          >
+            <Plus size={16} strokeWidth={2.2} />
+            <span>Adicionar</span>
+          </button>
+        </div>
+        <div className="cardmodal__body" ref={bodyRef}>
+        <div className="cardmodal__hero">
+        <div className="cardmodal__title-row" ref={titleRowRef}>
           <Checkbox
             checked={!!draft.done}
             onChange={(v) => patch({ done: v })}
@@ -532,30 +726,35 @@ export default function CardModal({
             }}
           />
         </div>
-        {headerLabels.length > 1 ? (
-          <div className="cardmodal__hero-labels" aria-label="Cores das etiquetas">
-            {headerLabels.map((label) => (
-              <span
-                key={label.id}
-                className="cardmodal__hero-label"
-                style={{ background: label.color, color: label.color }}
-                title={label.name || "Etiqueta"}
-              />
-            ))}
-          </div>
-        ) : null}
         </div>
 
         <div className="cardmodal__actions">
-          <button
-            type="button"
-            ref={labelsBtnRef}
-            className={`cardmodal__action${menu === "labels" ? " is-open" : ""}`}
-            onClick={() => setMenu(menu === "labels" ? null : "labels")}
-          >
-            <Tag size={16} strokeWidth={2.2} />
-            <span>Etiquetas</span>
-          </button>
+          {/* Sem etiquetas: so o botao de cima. Com etiquetas: o bloco abaixo
+              (lista + "+") assume e este botao some. */}
+          {labels.length === 0 ? (
+            <button
+              type="button"
+              ref={labelsBtnRef}
+              className={`cardmodal__action${menu === "labels" ? " is-open" : ""}`}
+              onClick={() => setMenu(menu === "labels" ? null : "labels")}
+            >
+              <Tag size={16} strokeWidth={2.2} />
+              <span>Etiquetas</span>
+            </button>
+          ) : null}
+          {!hasDates ? (
+            <button
+              type="button"
+              ref={datesBtnRef}
+              className={`cardmodal__action${menu === "dates" ? " is-open" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={menu === "dates"}
+              onClick={() => setMenu(menu === "dates" ? null : "dates")}
+            >
+              <Clock size={16} strokeWidth={2.2} />
+              <span>Datas</span>
+            </button>
+          ) : null}
           <button
             type="button"
             className="cardmodal__action"
@@ -563,6 +762,16 @@ export default function CardModal({
           >
             <CheckSquare size={16} strokeWidth={2.2} />
             <span>Checklist</span>
+          </button>
+          <button
+            type="button"
+            className="cardmodal__action"
+            disabled={!canUpload}
+            title={canUpload ? undefined : "Entre na sua conta para anexar arquivos"}
+            onClick={() => attachInputRef.current?.click()}
+          >
+            <Paperclip size={16} strokeWidth={2.2} />
+            <span>Anexo</span>
           </button>
           {weekMode ? (
             (() => {
@@ -595,6 +804,9 @@ export default function CardModal({
           </p>
         ) : null}
 
+        {labels.length > 0 || hasDates ? (
+        <div className="cardmodal__meta-row">
+        {labels.length > 0 ? (
         <div className="cardmodal__label-block" aria-label="Etiquetas">
           <span className="cardmodal__label-title">Etiquetas</span>
           <div className="cardmodal__label-list">
@@ -606,8 +818,9 @@ export default function CardModal({
                   type="button"
                   key={id}
                   className={`cardmodal__label${dragLabelId === id ? " is-dragging" : ""}`}
-                  style={{ "--label-color": l.color }}
+                  style={{ "--label-color": l.color, "--label-fg": readableTextOn(l.color) }}
                   title={l.name || "Sem nome"}
+                  aria-label={l.name ? `Etiqueta ${l.name}` : "Etiqueta sem nome"}
                   draggable={labels.length > 1}
                   onDragStart={(e) => {
                     setDragLabelId(id);
@@ -630,8 +843,7 @@ export default function CardModal({
                   onDragEnd={() => setDragLabelId(null)}
                   onClick={() => setMenu(menu === "labels" ? null : "labels")}
                 >
-                  <i aria-hidden="true" />
-                  <span>{l.name || "Sem nome"}</span>
+                  {l.name ? <span>{l.name}</span> : null}
                 </button>
               );
             })}
@@ -646,6 +858,28 @@ export default function CardModal({
             </button>
           </div>
         </div>
+        ) : null}
+        {hasDates ? (
+          <div className="cardmodal__label-block" aria-label="Datas">
+            <span className="cardmodal__label-title">Datas</span>
+            <button
+              type="button"
+              ref={datesBtnRef}
+              className="cardmodal__dates-chip"
+              aria-haspopup="dialog"
+              aria-expanded={menu === "dates"}
+              onClick={() => setMenu(menu === "dates" ? null : "dates")}
+            >
+              <span>{formatCardDates(draft)}</span>
+              {status ? (
+                <span className={`duebadge__tag is-${status}`}>{DUE_STATUS_LABEL[status]}</span>
+              ) : null}
+              <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
+        </div>
+        ) : null}
 
         <div className="cardmodal__section">
           <div className="cardmodal__section-head">
@@ -653,31 +887,39 @@ export default function CardModal({
               <AlignLeft size={18} strokeWidth={2.2} />
             </span>
             <h3 className="cardmodal__section-title">Descrição</h3>
+            {!descEditing && draft.description ? (
+              <button
+                type="button"
+                className="cardmodal__section-edit cardmodal__section-edit--outline"
+                onClick={() => setDescEditing(true)}
+              >
+                <span>Editar</span>
+              </button>
+            ) : null}
           </div>
+          <CardAttachmentsContext.Provider value={attachments}>
           {descEditing ? (
             <MarkdownEditor
               value={draft.description || ""}
               onChange={(v) => patch({ description: v })}
               onBlur={() => setDescEditing(false)}
+              canUpload={canUpload}
+              onUploadImage={uploadAttachment}
             />
           ) : draft.description ? (
+            <div className="cardmodal__desc-wrap">
             <div
-              className="cardmodal__desc-read md-rendered"
-              role="button"
-              tabIndex={0}
-              aria-label="Editar descrição"
-              onClick={() => setDescEditing(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  setDescEditing(true);
-                }
-              }}
+              ref={descReadRef}
+              className={`cardmodal__desc-read md-rendered${
+                descExpanded ? " is-expanded" : ""
+              }${descOverflows ? " is-clipped" : ""}`}
             >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlightSyntax]}
+                urlTransform={markdownUrlTransform}
                 components={{
+                  img: ({ node: _node, src, alt }) => <DescriptionImage src={src} alt={alt} />,
                   // Link abre em nova aba e NAO borbulha pro container
                   // "clique pra editar" (senao navegava E abria o editor).
                   a: ({ node: _node, ...props }) => (
@@ -693,6 +935,23 @@ export default function CardModal({
                 {draft.description}
               </ReactMarkdown>
             </div>
+            {descOverflows || descExpanded ? (
+              <button
+                type="button"
+                className="cardmodal__desc-more"
+                aria-expanded={descExpanded}
+                onClick={() => setDescExpanded((v) => !v)}
+              >
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={descExpanded ? { transform: "rotate(180deg)" } : undefined}
+                />
+                <span>{descExpanded ? "Mostrar menos" : "Mostrar mais"}</span>
+              </button>
+            ) : null}
+            </div>
           ) : (
             <button
               type="button"
@@ -702,13 +961,23 @@ export default function CardModal({
               Adicione uma descrição mais detalhada…
             </button>
           )}
+          </CardAttachmentsContext.Provider>
         </div>
+
+        <AttachmentsSection
+          attachments={attachments}
+          cover={cover}
+          canUpload={canUpload}
+          fileInputRef={attachInputRef}
+          onUpload={uploadAttachment}
+          onDelete={removeAttachment}
+          onToggleCover={toggleCoverAttachment}
+        />
 
         {checklists.map((list) => {
           const items = list.items || [];
           const done = items.filter((item) => item.done).length;
           const percent = items.length ? Math.round((done / items.length) * 100) : 0;
-          const dueDraftParts = dueTextByList[list.id] || dueDateParts(list.draftDueDate);
 
           return (
             <div className="checklist" key={list.id}>
@@ -754,17 +1023,6 @@ export default function CardModal({
                           })
                         }
                       />
-                      {item.dueDate ? (
-                        <span className="checkitem__due">
-                          <Clock size={13} strokeWidth={2.2} />
-                          {formatDueDate(item.dueDate)}
-                        </span>
-                      ) : (
-                        <span
-                          className="checkitem__due checkitem__due--empty"
-                          aria-hidden="true"
-                        />
-                      )}
                       <button
                         type="button"
                         className="checkitem__remove"
@@ -795,14 +1053,7 @@ export default function CardModal({
                         patchChecklist(list.id, {
                           composing: false,
                           draft: "",
-                          draftDueDate: "",
                         });
-                        setMonthOpen(false);
-                        setDuePickerListId(null);
-                        setDueMaskByList((current) => ({
-                          ...current,
-                          [list.id]: "",
-                        }));
                       }
                     }}
                     autoFocus
@@ -822,145 +1073,12 @@ export default function CardModal({
                         patchChecklist(list.id, {
                           composing: false,
                           draft: "",
-                          draftDueDate: "",
                         });
-                        setMonthOpen(false);
-                        setDuePickerListId(null);
-                        setDueMaskByList((current) => ({
-                          ...current,
-                          [list.id]: "",
-                        }));
                       }}
                     >
                       Cancelar
                     </button>
-                    <button
-                      type="button"
-                      className={`checklist__meta checklist__date${
-                        duePickerListId === list.id ? " is-open" : ""
-                      }`}
-                      onClick={() => toggleDuePicker(list)}
-                    >
-                      <Clock size={15} strokeWidth={2.2} />
-                      <span>{formatDueDate(list.draftDueDate)}</span>
-                    </button>
-                    {/* Mobile: digitacao manual dd/mm (teclado numerico). O ano
-                        e automatico. Substitui o seletor custom acima via CSS. */}
-                    <div className="checklist__date-native-wrap">
-                      <Clock size={14} strokeWidth={2.2} aria-hidden="true" />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="checklist__date-native"
-                        placeholder="dd/mm"
-                        maxLength={5}
-                        value={dueMaskByList[list.id] ?? dueMaskFromDate(list.draftDueDate)}
-                        aria-label="Data de entrega (dia/mês)"
-                        onChange={(event) => onDueMaskChange(list, event.target.value)}
-                      />
-                    </div>
                   </div>
-                  {duePickerListId === list.id ? (
-                    <div className="checklist__date-panel">
-                      <label className="checklist__date-field">
-                        <span>Dia</span>
-                        <input
-                          className="checklist__date-input"
-                          value={dueDraftParts.day}
-                          placeholder="00"
-                          inputMode="numeric"
-                          maxLength={2}
-                          aria-label="Dia da entrega"
-                          onChange={(event) =>
-                            updateDueDraft(list, { day: event.target.value })
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              saveDraftDueDate(list);
-                            } else if (event.key === "Escape") {
-                              setDuePickerListId(null);
-                            }
-                          }}
-                          autoFocus
-                        />
-                      </label>
-                      <div className="checklist__date-field">
-                        <span>Mês</span>
-                        <button
-                          type="button"
-                          ref={monthBtnRef}
-                          className={`checklist__month-trigger${
-                            dueDraftParts.month ? "" : " is-placeholder"
-                          }`}
-                          aria-haspopup="listbox"
-                          aria-expanded={monthOpen}
-                          aria-label="Mês da entrega"
-                          onClick={() => setMonthOpen((open) => !open)}
-                        >
-                          <span>
-                            {MONTHS.find((m) => m.value === dueDraftParts.month)
-                              ?.label || "Mês"}
-                          </span>
-                          <ChevronDown size={14} strokeWidth={2.4} />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="checklist__date-save"
-                        onClick={() => saveDraftDueDate(list)}
-                        disabled={!buildDueDate(dueDraftParts)}
-                      >
-                        Salvar
-                      </button>
-                      {monthOpen ? (
-                        <Popover
-                          anchorRef={monthBtnRef}
-                          width={150}
-                          className="kpop--menu"
-                          onClose={() => setMonthOpen(false)}
-                        >
-                          <ul className="month-list" role="listbox">
-                            <li>
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={!dueDraftParts.month}
-                                className={`month-opt${
-                                  dueDraftParts.month ? "" : " is-active"
-                                }`}
-                                onClick={() => {
-                                  updateDueDraft(list, { month: "" });
-                                  setMonthOpen(false);
-                                }}
-                              >
-                                Mês
-                              </button>
-                            </li>
-                            {MONTHS.map((month) => (
-                              <li key={month.value}>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={dueDraftParts.month === month.value}
-                                  className={`month-opt${
-                                    dueDraftParts.month === month.value
-                                      ? " is-active"
-                                      : ""
-                                  }`}
-                                  onClick={() => {
-                                    updateDueDraft(list, { month: month.value });
-                                    setMonthOpen(false);
-                                  }}
-                                >
-                                  {month.label}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </Popover>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 <button
@@ -991,6 +1109,8 @@ export default function CardModal({
             <Save size={16} strokeWidth={2.2} />
             <span>Salvar</span>
           </button>
+        </div>
+        </div>
         </div>
       </div>
 
@@ -1029,14 +1149,85 @@ export default function CardModal({
         </Popover>
       ) : null}
 
+      {menu === "more" ? (
+        <Popover anchorRef={moreBtnRef} width={220} className="kpop--mlist" onClose={() => setMenu(null)}>
+          <MenuList label="Mais ações" onClose={() => setMenu(null)}>
+            <MenuItem
+              icon={<Archive size={16} strokeWidth={2.2} />}
+              label="Arquivar"
+              onSelect={() => {
+                setMenu(null);
+                onArchive?.();
+              }}
+            />
+          </MenuList>
+        </Popover>
+      ) : null}
+
+      {menu === "add" ? (
+        <Popover anchorRef={addBtnRef} width={264} className="kpop--mlist" onClose={() => setMenu(null)}>
+          <MenuList label="Adicionar ao cartão" onClose={() => setMenu(null)}>
+            <MenuItem
+              icon={<Tag size={16} strokeWidth={2.2} />}
+              label="Etiquetas"
+              onSelect={() => openFromBar("labels")}
+            />
+            <MenuItem
+              icon={<Clock size={16} strokeWidth={2.2} />}
+              label="Datas"
+              onSelect={() => openFromBar("dates")}
+            />
+            <MenuItem
+              icon={<CheckSquare size={16} strokeWidth={2.2} />}
+              label="Checklist"
+              onSelect={() => {
+                addChecklist();
+                setMenu(null);
+              }}
+            />
+            <MenuItem
+              icon={<Paperclip size={16} strokeWidth={2.2} />}
+              label="Anexo"
+              onSelect={() => {
+                setMenu(null);
+                if (canUpload) attachInputRef.current?.click();
+              }}
+            />
+          </MenuList>
+        </Popover>
+      ) : null}
+
+      {menu === "dates" ? (
+        <DatesPopover
+          anchorRef={menuFromBar ? addBtnRef : datesBtnRef}
+          startDate={draft.startDate || null}
+          dueAt={draft.dueAt || null}
+          onSave={({ startDate, dueAt }) => patch({ startDate, dueAt })}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+
+      {menu === "cover" ? (
+        <CoverPopover
+          anchorRef={coverBtnRef}
+          cover={cover}
+          attachments={attachments}
+          canUpload={canUpload}
+          onChange={setCover}
+          onUpload={uploadAttachment}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+
       {menu === "labels" ? (
         <LabelsPopover
-          anchorRef={labelsBtnRef}
+          anchorRef={menuFromBar ? addBtnRef : labelsBtnRef}
           selected={labels}
           labels={availableLabels}
           onToggle={toggleLabel}
           onCreate={createLabel}
           onUpdate={updateLabel}
+          onDelete={deleteLabel}
           onClose={() => setMenu(null)}
         />
       ) : null}
