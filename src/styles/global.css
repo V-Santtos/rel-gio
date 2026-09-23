@@ -3505,8 +3505,10 @@ button.account-menu__item:focus-visible {
   position: relative;
   display: block;
 }
-.mdedlg__input-wrap input {
-  padding-right: 34px;
+/* Reserva a faixa do X: o texto rola por dentro sem passar por baixo dele. */
+.kpop .mdedlg__field .mdedlg__input-wrap input {
+  padding-right: 36px;
+  text-overflow: ellipsis;
 }
 .mdedlg__clear {
   position: absolute;
