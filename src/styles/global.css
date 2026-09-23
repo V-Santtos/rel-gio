@@ -4457,6 +4457,7 @@ button.account-menu__item:focus-visible {
 /* Conteudo da descricao alinhado ao texto "Descricao" (icone 18 + gap 11). */
 .cardmodal .cardmodal__desc-wrap,
 .cardmodal .cardmodal__desc-empty,
+.cardmodal .cardmodal__desc-actions,
 .cardmodal .mde {
   margin-left: 29px;
   width: calc(100% - 29px);
