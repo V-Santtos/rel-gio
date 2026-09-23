@@ -8,7 +8,15 @@ import gsap from "gsap";
  * (sem scroll-lock / handoff fragil — Principio de Simplicidade). Reposiciona
  * em resize/scroll. Fecha por clique fora; o Escape e tratado por quem o abre.
  */
-export default function Popover({ anchorRef, onClose, children, width = 280, className = "" }) {
+export default function Popover({
+  anchorRef,
+  onClose,
+  children,
+  width = 280,
+  className = "",
+  role = "dialog",
+  ariaLabel,
+}) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
 
@@ -125,7 +133,8 @@ export default function Popover({ anchorRef, onClose, children, width = 280, cla
         width,
         maxHeight: pos.maxHeight,
       }}
-      role="dialog"
+      role={role}
+      aria-label={ariaLabel}
     >
       {children}
     </div>,

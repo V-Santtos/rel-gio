@@ -3436,6 +3436,134 @@ button.account-menu__item:focus-visible {
   text-decoration-thickness: 2px;
 }
 
+/* Logo da rede social antes do link (leitura e editor). */
+.md-rendered img.mdlink__icon,
+.mde__prose img.mdlink__icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  max-width: none;
+  margin: 0 5px 0 0;
+  vertical-align: -3px;
+  border-radius: 0;
+  box-shadow: none;
+  user-select: none;
+}
+
+/* Barra do link no editor: Editar link | Remover | Copiar. */
+.kpop.kpop--linkbar {
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  width: auto !important;
+  padding: 4px;
+  border-radius: 10px;
+}
+.linkbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.linkbar__btn--text {
+  padding: 0 10px;
+}
+.linkbar__btn.is-done {
+  color: var(--accent);
+}
+@media (hover: hover) {
+  .linkbar__btn:hover {
+    background: var(--hover);
+  }
+}
+.linkbar__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.linkbar__sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
+/* Dialogo de link: Link * com botao de limpar + dica do texto. */
+.mdedlg__req {
+  color: var(--accent);
+}
+.mdedlg__input-wrap {
+  position: relative;
+  display: block;
+}
+.mdedlg__input-wrap input {
+  padding-right: 34px;
+}
+.mdedlg__clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  padding: 3px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+@media (hover: hover) {
+  .mdedlg__clear:hover {
+    color: var(--fg);
+  }
+}
+.mdedlg__clear:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.mdedlg__hint {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+/* Salvar / Cancelar da descricao (independente do Salvar do cartao). */
+.cardmodal__desc-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.cardmodal__desc-cancel {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cardmodal__desc-cancel:hover {
+    background: var(--hover);
+  }
+}
+.cardmodal__desc-cancel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Previa de link (link sozinho na linha da descricao) — estilo Trello. */
 .md-rendered .linkcard {
   display: flex;
@@ -6810,3 +6938,6 @@ button.account-menu__item:focus-visible {
    Carregado por ultimo para vencer na cascata no breakpoint.
    ============================================================ */
 @import "./mobile/index.css";
+.cardmodal .cardmodal__desc-actions .mdedlg__submit {
+  font-weight: 500;
+}

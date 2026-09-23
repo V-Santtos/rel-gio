@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { getMarkRange } from "@tiptap/core";
 import Popover from "./Popover.jsx";
 import { ImageNodeView } from "./DescriptionImage.jsx";
 import { descriptionExtensions, normalizeUrl } from "./markdownExtensions.js";
+import { SocialLinkIcons } from "./socialLinks.js";
 import { IMAGE_TYPES, validateAttachmentFile } from "./attachments.js";
 import { MenuItem, MenuList } from "../MenuList.jsx";
 import {
   Bold,
+  Check,
+  CircleX,
+  Copy,
   Italic,
   ChevronDown,
+  Unlink,
   Plus,
   Link2,
   List,
@@ -45,10 +51,12 @@ const stopEscape = (onClose) => (event) => {
   onClose();
 };
 
-function LinkDialog({ anchorRef, initialText, onInsert, onClose }) {
-  const [url, setUrl] = useState("");
+// Inserir (menu + / Ctrl+K) e Editar link (barra do link) usam o mesmo dialogo.
+function LinkDialog({ anchorRef, initialUrl = "", initialText, submitLabel = "Inserir", onInsert, onClose }) {
+  const [url, setUrl] = useState(initialUrl);
   const [text, setText] = useState(initialText || "");
   const [error, setError] = useState("");
+  const urlRef = useRef(null);
 
   const submit = (event) => {
     event.preventDefault();
@@ -61,25 +69,49 @@ function LinkDialog({ anchorRef, initialText, onInsert, onClose }) {
   };
 
   return (
-    <Popover anchorRef={anchorRef} width={300} className="kpop--mde" onClose={onClose}>
-      <form className="mdedlg" onSubmit={submit} onKeyDown={stopEscape(onClose)}>
-        <p className="kpop__title">Link</p>
+    <Popover anchorRef={anchorRef} width={320} className="kpop--mde" onClose={onClose}>
+      <form
+        className="mdedlg"
+        aria-label="Link"
+        onSubmit={submit}
+        onKeyDown={stopEscape(onClose)}
+      >
         <label className="mdedlg__field">
-          <span>URL</span>
-          <input
-            type="text"
-            inputMode="url"
-            autoComplete="off"
-            spellCheck={false}
-            value={url}
-            placeholder="https://…"
-            aria-invalid={!!error}
-            autoFocus
-            onChange={(event) => {
-              setUrl(event.target.value);
-              setError("");
-            }}
-          />
+          <span>
+            Link <span className="mdedlg__req" aria-hidden="true">*</span>
+          </span>
+          <span className="mdedlg__input-wrap">
+            <input
+              ref={urlRef}
+              type="text"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              value={url}
+              placeholder="https://…"
+              required
+              aria-invalid={!!error}
+              autoFocus
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setError("");
+              }}
+            />
+            {url ? (
+              <button
+                type="button"
+                className="mdedlg__clear"
+                aria-label="Limpar link"
+                title="Limpar link"
+                onClick={() => {
+                  setUrl("");
+                  urlRef.current?.focus();
+                }}
+              >
+                <CircleX size={16} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            ) : null}
+          </span>
         </label>
         <label className="mdedlg__field">
           <span>Texto de exibição (opcional)</span>
@@ -87,9 +119,10 @@ function LinkDialog({ anchorRef, initialText, onInsert, onClose }) {
             type="text"
             autoComplete="off"
             value={text}
-            placeholder="Texto do link"
+            placeholder="Texto a exibir"
             onChange={(event) => setText(event.target.value)}
           />
+          <span className="mdedlg__hint">Dê um título ou uma descrição ao link</span>
         </label>
         {error ? (
           <p className="coverpop__error" role="alert">
@@ -101,10 +134,58 @@ function LinkDialog({ anchorRef, initialText, onInsert, onClose }) {
             Cancelar
           </button>
           <button type="submit" className="mdedlg__submit">
-            Inserir
+            {submitLabel}
           </button>
         </div>
       </form>
+    </Popover>
+  );
+}
+
+// Barra que aparece sob o link clicado no editor: Editar, Remover e Copiar.
+// Os botoes nao roubam o foco do editor (mousedown com preventDefault).
+function LinkBar({ anchorRef, onEdit, onRemove, onCopy, copied, onClose }) {
+  const keepFocus = (event) => event.preventDefault();
+  return (
+    <Popover
+      anchorRef={anchorRef}
+      width={212}
+      className="kpop--linkbar"
+      role="toolbar"
+      ariaLabel="Opções do link"
+      onClose={onClose}
+    >
+      <button type="button" className="linkbar__btn linkbar__btn--text" onMouseDown={keepFocus} onClick={onEdit}>
+        Editar link
+      </button>
+      <span className="linkbar__sep" aria-hidden="true" />
+      <button
+        type="button"
+        className="linkbar__btn"
+        aria-label="Remover link"
+        title="Remover link"
+        onMouseDown={keepFocus}
+        onClick={onRemove}
+      >
+        <Unlink size={16} strokeWidth={2.2} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className={`linkbar__btn${copied ? " is-done" : ""}`}
+        aria-label={copied ? "Link copiado" : "Copiar link"}
+        title={copied ? "Copiado!" : "Copiar link"}
+        onMouseDown={keepFocus}
+        onClick={onCopy}
+      >
+        {copied ? (
+          <Check size={16} strokeWidth={2.4} aria-hidden="true" />
+        ) : (
+          <Copy size={16} strokeWidth={2.2} aria-hidden="true" />
+        )}
+      </button>
+      <span className="sr-only" aria-live="polite">
+        {copied ? "Link copiado" : ""}
+      </span>
     </Popover>
   );
 }
@@ -226,7 +307,14 @@ function ImageDialog({ anchorRef, canUpload, onUpload, onInsert, onClose }) {
 export default function MarkdownEditor({ value, onChange, onBlur, canUpload = false, onUploadImage }) {
   const [active, setActive] = useState({});
   const [headingOpen, setHeadingOpen] = useState(false);
-  const [insertMenu, setInsertMenu] = useState(null); // null | "menu" | "link" | "image"
+  const [insertMenu, setInsertMenu] = useState(null); // null | "menu" | "link" | "editlink" | "image"
+  // Link sob o cursor (barra Editar/Remover/Copiar): { href, text, from, to }.
+  const [linkBar, setLinkBar] = useState(null);
+  const [editingLink, setEditingLink] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const linkBarRef = useRef(null);
+  const linkAnchorRef = useRef(null);
+  linkBarRef.current = linkBar;
   const [listOpen, setListOpen] = useState(false);
   const [linkText, setLinkText] = useState("");
   const [attachError, setAttachError] = useState("");
@@ -242,7 +330,10 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
   const openInsertRef = useRef(null);
 
   const extensions = useMemo(
-    () => descriptionExtensions({ placeholder: editorPlaceholder, imageNodeView: ImageNodeView }),
+    () => [
+      ...descriptionExtensions({ placeholder: editorPlaceholder, imageNodeView: ImageNodeView }),
+      SocialLinkIcons,
+    ],
     []
   );
 
@@ -255,6 +346,33 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
       level: HEADING_LEVELS.find((level) => instance.isActive("heading", { level })) || 0,
       bulletList: instance.isActive("bulletList"),
       orderedList: instance.isActive("orderedList"),
+    });
+  };
+
+  // Cursor/clique dentro de um link -> mostra a barra sob ele.
+  const syncLinkBar = (instance) => {
+    const { state, view } = instance;
+    const { from, to } = state.selection;
+    const type = state.schema.marks.link;
+    const range = type && getMarkRange(state.doc.resolve(from), type);
+    if (!range || to > range.to) {
+      setLinkBar(null);
+      return;
+    }
+    const mark = state.doc.nodeAt(range.from)?.marks.find((m) => m.type === type);
+    const { node } = view.domAtPos(range.from + 1);
+    const anchor = (node.nodeType === 3 ? node.parentElement : node)?.closest?.("a");
+    if (!mark || !anchor) {
+      setLinkBar(null);
+      return;
+    }
+    linkAnchorRef.current = anchor;
+    setCopied(false);
+    setLinkBar({
+      href: mark.attrs.href,
+      text: state.doc.textBetween(range.from, range.to, " "),
+      from: range.from,
+      to: range.to,
     });
   };
 
@@ -273,6 +391,12 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
       },
       // Ctrl/Cmd+K abre o dialogo de link (como no Trello).
       handleKeyDown: (_view, event) => {
+        // Esc com a barra do link aberta fecha SO a barra (nao sai da edicao).
+        if (event.key === "Escape" && linkBarRef.current) {
+          event.stopPropagation();
+          setLinkBar(null);
+          return true;
+        }
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
           event.preventDefault();
           openInsertRef.current?.("link");
@@ -287,9 +411,15 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
     },
     onUpdate: ({ editor: instance }) => {
       updateActiveState(instance);
+      setLinkBar(null);
       onChange?.(instance.getMarkdown().trim());
     },
-    onSelectionUpdate: ({ editor: instance }) => updateActiveState(instance),
+    onSelectionUpdate: ({ editor: instance, transaction }) => {
+      updateActiveState(instance);
+      // Digitando (inclusive o autolink nascendo) a barra nao aparece.
+      if (transaction?.docChanged) setLinkBar(null);
+      else syncLinkBar(instance);
+    },
     onBlur: () => {
       if (!dialogOpenRef.current) onBlur?.();
     },
@@ -385,6 +515,64 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
     savedRange.current = null;
     setInsertMenu(null);
   };
+
+  const openEditLink = () => {
+    if (!linkBar) return;
+    savedRange.current = { from: linkBar.from, to: linkBar.to };
+    setEditingLink({
+      href: linkBar.href,
+      // Texto igual a URL = sem texto de exibicao (campo vazio, como no Trello).
+      text: linkBar.text === linkBar.href ? "" : linkBar.text,
+      current: linkBar.text,
+    });
+    setLinkBar(null);
+    setInsertMenu("editlink");
+  };
+
+  const saveEditedLink = ({ href, text }) => {
+    if (!editor || !savedRange.current || !editingLink) return;
+    const range = savedRange.current;
+    const display = text || href;
+    const chain = editor.chain().focus();
+    if (display === editingLink.current) {
+      chain.setTextSelection(range).setLink({ href }).setTextSelection(range.to).run();
+    } else {
+      chain
+        .insertContentAt(range, { type: "text", text: display, marks: [{ type: "link", attrs: { href } }] })
+        .run();
+    }
+    savedRange.current = null;
+    setEditingLink(null);
+    setInsertMenu(null);
+  };
+
+  const removeLink = () => {
+    if (!editor || !linkBar) return;
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: linkBar.from, to: linkBar.to })
+      .unsetLink()
+      .setTextSelection(linkBar.to)
+      .run();
+    setLinkBar(null);
+  };
+
+  const copyLink = async () => {
+    if (!linkBar) return;
+    try {
+      await navigator.clipboard.writeText(linkBar.href);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   const insertImage = ({ src, alt }) => {
     if (!editor) return;
@@ -606,6 +794,30 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
           initialText={linkText}
           onInsert={insertLink}
           onClose={closeDialog}
+        />
+      ) : null}
+      {insertMenu === "editlink" && editingLink ? (
+        <LinkDialog
+          anchorRef={linkAnchorRef}
+          initialUrl={editingLink.href}
+          initialText={editingLink.text}
+          submitLabel="Salvar"
+          onInsert={saveEditedLink}
+          onClose={() => {
+            setEditingLink(null);
+            closeDialog();
+          }}
+        />
+      ) : null}
+      {linkBar && insertMenu === null ? (
+        <LinkBar
+          key={linkBar.from}
+          anchorRef={linkAnchorRef}
+          copied={copied}
+          onEdit={openEditLink}
+          onRemove={removeLink}
+          onCopy={copyLink}
+          onClose={() => setLinkBar(null)}
         />
       ) : null}
       {insertMenu === "image" ? (

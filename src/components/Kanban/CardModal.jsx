@@ -26,8 +26,7 @@ import CoverPopover from "./CoverPopover.jsx";
 import { NO_COVER, clamp01, readableTextOn, resolveCover } from "./cover.js";
 import { CardAttachmentsContext, DescriptionImage } from "./DescriptionImage.jsx";
 import { markdownUrlTransform } from "./markdownExtensions.js";
-import LinkPreviewCard from "./LinkPreviewCard.jsx";
-import { rehypeLinkPreview } from "./linkPreview.js";
+import { socialNetworkOf } from "./socialLinks.js";
 import DatesPopover from "./DatesPopover.jsx";
 import { MenuItem, MenuList } from "../MenuList.jsx";
 import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
@@ -142,6 +141,17 @@ export default function CardModal({
 
   const [menu, setMenu] = useState(null); // null | "labels" | "period" | "cover"
   const [descEditing, setDescEditing] = useState(false);
+  // Rascunho da descricao: Salvar grava no cartao, Cancelar descarta.
+  const [descDraft, setDescDraft] = useState("");
+  const startDescEdit = () => {
+    setDescDraft(draft.description || "");
+    setDescEditing(true);
+  };
+  const saveDesc = () => {
+    patch({ description: descDraft.trim() });
+    setDescEditing(false);
+  };
+  const cancelDesc = () => setDescEditing(false);
   const [periodError, setPeriodError] = useState(false);
   const [repositioning, setRepositioning] = useState(false);
   const descReadRef = useRef(null);
@@ -893,7 +903,7 @@ export default function CardModal({
               <button
                 type="button"
                 className="cardmodal__section-edit cardmodal__section-edit--outline"
-                onClick={() => setDescEditing(true)}
+                onClick={startDescEdit}
               >
                 <span>Editar</span>
               </button>
@@ -901,13 +911,22 @@ export default function CardModal({
           </div>
           <CardAttachmentsContext.Provider value={attachments}>
           {descEditing ? (
-            <MarkdownEditor
-              value={draft.description || ""}
-              onChange={(v) => patch({ description: v })}
-              onBlur={() => setDescEditing(false)}
-              canUpload={canUpload}
-              onUploadImage={uploadAttachment}
-            />
+            <>
+              <MarkdownEditor
+                value={descDraft}
+                onChange={setDescDraft}
+                canUpload={canUpload}
+                onUploadImage={uploadAttachment}
+              />
+              <div className="cardmodal__desc-actions">
+                <button type="button" className="mdedlg__submit" onClick={saveDesc}>
+                  Salvar
+                </button>
+                <button type="button" className="cardmodal__desc-cancel" onClick={cancelDesc}>
+                  Cancelar
+                </button>
+              </div>
+            </>
           ) : draft.description ? (
             <div className="cardmodal__desc-wrap">
             <div
@@ -918,21 +937,37 @@ export default function CardModal({
             >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlightSyntax, rehypeLinkPreview]}
+                // Previa em cartao (rehypeLinkPreview + LinkPreviewCard) fica
+                // desligada ate definirmos onde ela entra.
+                rehypePlugins={[rehypeHighlightSyntax]}
                 urlTransform={markdownUrlTransform}
                 components={{
                   img: ({ node: _node, src, alt }) => <DescriptionImage src={src} alt={alt} />,
-                  linkpreview: ({ href }) => <LinkPreviewCard href={href} />,
                   // Link abre em nova aba e NAO borbulha pro container
                   // "clique pra editar" (senao navegava E abria o editor).
-                  a: ({ node: _node, ...props }) => (
-                    <a
-                      {...props}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ),
+                  // Link de rede social ganha o logo da rede na frente.
+                  a: ({ node: _node, children, ...props }) => {
+                    const network = socialNetworkOf(props.href);
+                    return (
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {network ? (
+                          <img
+                            className="mdlink__icon"
+                            src={network.icon}
+                            alt=""
+                            title={network.label}
+                            draggable={false}
+                          />
+                        ) : null}
+                        {children}
+                      </a>
+                    );
+                  },
                 }}
               >
                 {draft.description}
@@ -959,7 +994,7 @@ export default function CardModal({
             <button
               type="button"
               className="cardmodal__desc-empty"
-              onClick={() => setDescEditing(true)}
+              onClick={startDescEdit}
             >
               Adicione uma descrição mais detalhada…
             </button>
