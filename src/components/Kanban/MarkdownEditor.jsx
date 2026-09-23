@@ -570,7 +570,11 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
 
   useEffect(() => {
     if (!copied) return undefined;
-    const timer = setTimeout(() => setCopied(false), 1600);
+    // Mostra o check por um instante e fecha a barra (sem clicar fora).
+    const timer = setTimeout(() => {
+      setCopied(false);
+      setLinkBar(null);
+    }, 900);
     return () => clearTimeout(timer);
   }, [copied]);
 
