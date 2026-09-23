@@ -111,8 +111,8 @@ export function AlarmToast({ day, time, description, period, onDone }) {
         <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="at-grad" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#f0726a"/>
-              <stop offset="1" stopColor="#8c2f33"/>
+              <stop offset="0" stopColor="#de7e5d"/>
+              <stop offset="1" stopColor="#7f3a22"/>
             </linearGradient>
           </defs>
           <rect width="512" height="512" rx="112" fill="url(#at-grad)"/>

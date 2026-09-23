@@ -12,7 +12,7 @@
   --muted: #8a8f98;
   --surface: #ffffff;
   --border: rgba(0, 0, 0, 0.08);
-  --accent: #ec5b53;
+  --accent: #d96c47;
   --accent-fg: #ffffff;
   --hover: rgba(0, 0, 0, 0.05);
   --input-bg: #eef0f3;
@@ -20,8 +20,8 @@
   --card-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.2);
   --nav-bg: #e6e8ec;
   --nav-fg: #545861;
-  --accent-glow: rgba(236, 91, 83, 0.4);
-  --accent-grad: linear-gradient(180deg, #f06a62 0%, #e14f47 100%);
+  --accent-glow: rgba(217, 108, 71, 0.4);
+  --accent-grad: linear-gradient(180deg, #de7e5d 0%, #c86341 100%);
   --bg-glow: rgba(255, 255, 255, 0.7);
 
   /* Kanban (Tarefas) */
@@ -126,7 +126,7 @@
   --muted: #8a8f98;
   --surface: #1f2228;
   --border: rgba(255, 255, 255, 0.1);
-  --accent: #ec5b53;
+  --accent: #d96c47;
   --accent-fg: #ffffff;
   --hover: rgba(255, 255, 255, 0.06);
   --input-bg: linear-gradient(180deg, #222224 0%, #18181a 100%);
@@ -134,8 +134,8 @@
   --card-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
   --nav-bg: #1d1d22;
   --nav-fg: #c2c5cc;
-  --accent-glow: rgba(236, 91, 83, 0.5);
-  --accent-grad: linear-gradient(180deg, #f06a62 0%, #e14f47 100%);
+  --accent-glow: rgba(217, 108, 71, 0.5);
+  --accent-grad: linear-gradient(180deg, #de7e5d 0%, #c86341 100%);
   --bg-glow: rgba(255, 255, 255, 0.035);
 
   /* Kanban (Tarefas) — estado neutro: cinza neutro (igual referencia Obsidian) */
@@ -1586,7 +1586,7 @@ button.account-menu__item:focus-visible {
   color: #6a6f78;
 }
 .auth-field input::selection {
-  background: rgba(236, 91, 83, 0.28);
+  background: rgba(217, 108, 71, 0.28);
   color: #fff;
 }
 .auth-field input:-webkit-autofill,
@@ -1647,7 +1647,7 @@ button.account-menu__item:focus-visible {
   transition: background 0.16s ease, border-color 0.16s ease;
 }
 .auth-remember input:checked {
-  background: linear-gradient(180deg, #f06a62, #e14f47);
+  background: linear-gradient(180deg, #de7e5d, #c86341);
   border-color: transparent;
 }
 .auth-remember input:checked::after {
@@ -1702,7 +1702,7 @@ button.account-menu__item:focus-visible {
   margin-top: 4px;
   border: 0;
   border-radius: 16px;
-  background: linear-gradient(180deg, #f06a62 0%, #e14f47 100%);
+  background: linear-gradient(180deg, #de7e5d 0%, #c86341 100%);
   color: #fff;
   font-family: inherit;
   font-size: 16px;
@@ -1713,7 +1713,7 @@ button.account-menu__item:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  box-shadow: 0 14px 30px -10px rgba(236, 91, 83, 0.55);
+  box-shadow: 0 14px 30px -10px rgba(217, 108, 71, 0.55);
   transition: filter 0.16s ease, transform 0.16s ease;
 }@media (hover: hover) {
 .auth-submit:hover {
@@ -1726,12 +1726,12 @@ button.account-menu__item:focus-visible {
 }
 .auth-field:focus-within {
   border-color: rgba(244, 245, 247, 0.14);
-  box-shadow: 0 0 0 3px rgba(236, 91, 83, 0.12);
+  box-shadow: 0 0 0 3px rgba(217, 108, 71, 0.12);
 }
 .auth-card__tab:focus-visible,
 .auth-submit:focus-visible,
 .auth-remember input:focus-visible {
-  outline: 2px solid rgba(236, 91, 83, 0.8);
+  outline: 2px solid rgba(217, 108, 71, 0.8);
   outline-offset: 2px;
 }
 
@@ -4894,7 +4894,7 @@ button.account-menu__item:focus-visible {
 }@media (hover: hover) {
 .cardmodal__save:hover {
   filter: brightness(1.08);
-  box-shadow: 0 6px 18px rgba(236, 91, 83, 0.32);
+  box-shadow: 0 6px 18px rgba(217, 108, 71, 0.32);
 }}
 .cardmodal__save:focus-visible {
   outline: 2px solid var(--accent);
@@ -4931,8 +4931,8 @@ button.account-menu__item:focus-visible {
     border-color 0.15s ease, box-shadow 0.15s ease;
 }@media (hover: hover) {
 .cardmodal__delete:hover {
-  background: rgba(236, 91, 83, 0.1);
-  border-color: rgba(236, 91, 83, 0.45);
+  background: rgba(217, 108, 71, 0.1);
+  border-color: rgba(217, 108, 71, 0.45);
   color: var(--accent);
 }}
 .cardmodal__delete:focus-visible {
@@ -4990,7 +4990,7 @@ button.account-menu__item:focus-visible {
 }
 .cardmodal__action.is-error {
   border-color: var(--accent);
-  background: rgba(236, 91, 83, 0.1);
+  background: rgba(217, 108, 71, 0.1);
   color: var(--accent);
 }
 .cardmodal__action.is-error svg {
@@ -5184,7 +5184,7 @@ button.account-menu__item:focus-visible {
   font-size: 13.5px;
 }
 .kpop__search:focus {
-  outline: 2px solid rgba(236, 91, 83, 0.28);
+  outline: 2px solid rgba(217, 108, 71, 0.28);
   outline-offset: 0;
 }
 .kpop__section-label {
@@ -5528,7 +5528,7 @@ button.account-menu__item:focus-visible {
 .alarm-time__seg:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(236, 91, 83, 0.18);
+  box-shadow: 0 0 0 3px rgba(217, 108, 71, 0.18);
 }
 .alarm-time__colon {
   font-size: 19px;
@@ -5773,7 +5773,7 @@ button.account-menu__item:focus-visible {
   padding: 0 10px;
 }
 .label-form__field input:focus {
-  outline: 2px solid rgba(236, 91, 83, 0.28);
+  outline: 2px solid rgba(217, 108, 71, 0.28);
   border-color: var(--accent);
 }
 .label-form__colors {
@@ -6139,7 +6139,7 @@ button.account-menu__item:focus-visible {
   color: #ff9c96;
 }@media (hover: hover) {
 .kmenu__item--danger:hover {
-  background: rgba(236, 91, 83, 0.12);
+  background: rgba(217, 108, 71, 0.12);
 }}
 .kmenu__item:focus-visible {
   outline: 2px solid var(--accent);
@@ -6571,7 +6571,7 @@ button.account-menu__item:focus-visible {
   height: 15px;
   border: 0;
   border-radius: 50%;
-  background: #ec5b53;
+  background: #d96c47;
   box-shadow: 0 0 8px var(--accent-glow);
   cursor: pointer;
 }
