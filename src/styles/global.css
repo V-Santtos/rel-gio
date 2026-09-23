@@ -6944,3 +6944,233 @@ button.account-menu__item:focus-visible {
 .cardmodal .cardmodal__desc-actions .mdedlg__submit {
   font-weight: 500;
 }
+
+/* ===== Links inteligentes do checklist (estilo Trello) ===== */
+.checkitem__view {
+  min-height: 32px;
+  padding: 5px 0;
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: text;
+}
+.checkitem__view:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Item com link longo: no maximo 3 linhas + reticencias. */
+.checkitem__clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.smartlink {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .smartlink:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+.smartlink:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.smartlink__icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  vertical-align: -3px;
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+/* Cartao do link (hover / toque). */
+.kpop.kpop--linkcard {
+  padding: 12px 8px 8px;
+}
+.linkhover {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.linkhover__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 6px;
+}
+.linkhover__icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  object-fit: contain;
+}
+.linkhover__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--link);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.linkhover__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.linkhover__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 2px;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.linkhover__foot-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+/* Modal de previa (Instagram / YouTube). */
+.lpmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  overscroll-behavior: contain;
+}
+.lpmodal__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(900px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  border: 1px solid var(--modal-border);
+  border-radius: 14px;
+  background: var(--modal-bg);
+  box-shadow: var(--modal-shadow), var(--modal-rim);
+  font-family: "Open Sans", system-ui, -apple-system, sans-serif;
+}
+.lpmodal__panel.is-vertical {
+  width: min(440px, 100%);
+}
+.lpmodal__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+}
+.lpmodal__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+.lpmodal__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.lpmodal__open,
+.lpmodal__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lpmodal__open {
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--fg) 24%, transparent);
+}
+.lpmodal__close {
+  width: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+@media (hover: hover) {
+  .lpmodal__open:hover,
+  .lpmodal__close:hover {
+    background: var(--hover);
+  }
+}
+.lpmodal__open:focus-visible,
+.lpmodal__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lpmodal__frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.lpmodal__panel.is-vertical .lpmodal__frame {
+  aspect-ratio: auto;
+  height: min(720px, calc(100dvh - 110px));
+  background: #fff;
+}
+.lpmodal__frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+@media (max-width: 480px) {
+  .lpmodal__open span {
+    display: none;
+  }
+  .lpmodal__open {
+    width: 34px;
+    padding: 0;
+  }
+}

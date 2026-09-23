@@ -27,6 +27,7 @@ import { NO_COVER, clamp01, readableTextOn, resolveCover } from "./cover.js";
 import { CardAttachmentsContext, DescriptionImage } from "./DescriptionImage.jsx";
 import { markdownUrlTransform } from "./markdownExtensions.js";
 import { socialNetworkOf } from "./socialLinks.js";
+import ChecklistItemText from "./ChecklistItemText.jsx";
 import DatesPopover from "./DatesPopover.jsx";
 import { MenuItem, MenuList } from "../MenuList.jsx";
 import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
@@ -1052,14 +1053,9 @@ export default function CardModal({
                         size={18}
                         label={`Marcar ${item.text}`}
                       />
-                      <input
-                        className="checkitem__text"
-                        value={item.text}
-                        onChange={(event) =>
-                          patchChecklistItem(list.id, item.id, {
-                            text: event.target.value,
-                          })
-                        }
+                      <ChecklistItemText
+                        text={item.text}
+                        onChange={(text) => patchChecklistItem(list.id, item.id, { text })}
                       />
                       <button
                         type="button"

@@ -19,13 +19,15 @@ export function formatShortcut(keys) {
  * Lista de menu padrao do app (dropdowns). Setas/Home/End navegam, Escape fecha
  * so o menu. Ao abrir, o foco vai para o item ativo (ou o primeiro).
  */
-export function MenuList({ label, onClose, children, className = "" }) {
+export function MenuList({ label, onClose, children, className = "", autoFocus = true }) {
   const ref = useRef(null);
 
   const items = () =>
     Array.from(ref.current?.querySelectorAll('[role^="menuitem"]:not([disabled])') || []);
 
   useLayoutEffect(() => {
+    // autoFocus=false: menu aberto por hover nao rouba o foco da pagina.
+    if (!autoFocus) return;
     const list = items();
     const current = list.find((el) => el.getAttribute("aria-checked") === "true") || list[0];
     current?.focus({ preventScroll: true });
