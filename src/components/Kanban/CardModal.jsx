@@ -13,7 +13,6 @@ import {
   Sun,
   Moon,
   Check,
-  Save,
   Paperclip,
   Image as ImageIcon,
   ChevronDown,
@@ -310,8 +309,27 @@ export default function CardModal({
 
   const updateChecklists = (next) => patch({ checklists: next });
 
+  // Pedido de "levar ate a checklist": o efeito abaixo rola ate o campo
+  // "Adicionar um item" e poe o cursor nele, depois que o composer renderiza.
+  const checklistRef = useRef(null);
+  const [checklistFocus, setChecklistFocus] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!checklistFocus) return;
+    const input = checklistRef.current?.querySelector(".checklist__input");
+    if (!input) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    input.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    input.focus({ preventScroll: true });
+  }, [checklistFocus]);
+
+  // Uma checklist por cartao: se ja existe, o botao leva ate ela e abre o campo.
   const addChecklist = () => {
-    if (checklists.length) return;
+    setChecklistFocus((n) => n + 1);
+    if (checklists.length) {
+      if (!checklists[0].composing) patchChecklist(checklists[0].id, { composing: true });
+      return;
+    }
     updateChecklists([
       {
         id: makeClientId(),
@@ -770,7 +788,7 @@ export default function CardModal({
           ) : null}
           <button
             type="button"
-            className="cardmodal__action"
+            className={`cardmodal__action${checklists.length ? " is-active" : ""}`}
             onClick={addChecklist}
           >
             <CheckSquare size={16} strokeWidth={2.2} />
@@ -1019,7 +1037,7 @@ export default function CardModal({
           const percent = items.length ? Math.round((done / items.length) * 100) : 0;
 
           return (
-            <div className="checklist" key={list.id}>
+            <div className="checklist" key={list.id} ref={checklistRef}>
               <div className="checklist__head">
                 <div className="checklist__title-wrap">
                   <CheckSquare size={18} strokeWidth={2.2} />
@@ -1140,7 +1158,6 @@ export default function CardModal({
             aria-disabled={weekMode && !draft.period}
             onClick={handleSave}
           >
-            <Save size={16} strokeWidth={2.2} />
             <span>Salvar</span>
           </button>
         </div>
