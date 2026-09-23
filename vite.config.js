@@ -4,8 +4,21 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { fileURLToPath, URL } from "node:url";
 
+// Dev: serve a mesma Vercel Function de /api/link-preview no localhost.
+const linkPreviewDevApi = {
+  name: "link-preview-dev-api",
+  configureServer(server) {
+    server.middlewares.use("/api/link-preview", async (req, res) => {
+      const { default: handler } = await server.ssrLoadModule("/api/link-preview.js");
+      req.url = `/api/link-preview${req.url}`;
+      handler(req, res);
+    });
+  },
+};
+
 export default defineConfig({
   plugins: [
+    linkPreviewDevApi,
     react(),
     tailwindcss(),
     VitePWA({

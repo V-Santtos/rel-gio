@@ -26,6 +26,8 @@ import CoverPopover from "./CoverPopover.jsx";
 import { NO_COVER, clamp01, readableTextOn, resolveCover } from "./cover.js";
 import { CardAttachmentsContext, DescriptionImage } from "./DescriptionImage.jsx";
 import { markdownUrlTransform } from "./markdownExtensions.js";
+import LinkPreviewCard from "./LinkPreviewCard.jsx";
+import { rehypeLinkPreview } from "./linkPreview.js";
 import DatesPopover from "./DatesPopover.jsx";
 import { MenuItem, MenuList } from "../MenuList.jsx";
 import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
@@ -916,10 +918,11 @@ export default function CardModal({
             >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlightSyntax]}
+                rehypePlugins={[rehypeHighlightSyntax, rehypeLinkPreview]}
                 urlTransform={markdownUrlTransform}
                 components={{
                   img: ({ node: _node, src, alt }) => <DescriptionImage src={src} alt={alt} />,
+                  linkpreview: ({ href }) => <LinkPreviewCard href={href} />,
                   // Link abre em nova aba e NAO borbulha pro container
                   // "clique pra editar" (senao navegava E abria o editor).
                   a: ({ node: _node, ...props }) => (
