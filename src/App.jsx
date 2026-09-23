@@ -1903,27 +1903,30 @@ function TimerApp({ session, onLogout, entered }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Toca so dentro da secao Foco, com o play/pause ligado. Reage a QUALQUER
-  // motivo de entrar/sair dessa condicao (ligar/desligar, ou navegar pra
-  // dentro/fora do Foco) -- sempre reinicia do zero (o motor nao guarda
-  // posicao). NAO reage a troca de faixa (`musicSrc` fora das deps de
-  // proposito): isso e tratado ao vivo por `pickTrack`, via crossfade, pra
-  // nao colidir reiniciando por cima.
+  // Com o play/pause ligado, toca na secao Foco e, FORA dela, enquanto o ciclo
+  // estiver rodando (a pilula de fundo aparece junto). Trocar de aba com o
+  // ciclo rodando nao muda a condicao -> a musica segue sem reiniciar. Pausar
+  // o ciclo fora do Foco para a musica. Ao entrar na condicao, reinicia do
+  // zero (o motor nao guarda posicao). NAO reage a troca de faixa (`musicSrc`
+  // fora das deps de proposito): isso e tratado ao vivo por `pickTrack`, via
+  // crossfade, pra nao colidir reiniciando por cima.
+  const musicShouldPlay = musicOn && (section === "foco" || timer.running);
   useEffect(() => {
-    if (section === "foco" && musicOn) {
+    if (musicShouldPlay) {
       startMusic(musicSrc);
     } else {
       stopMusic();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, musicOn]);
+  }, [musicShouldPlay]);
 
   // Virada de ciclo: a musica ZERA do inicio (nunca comeca o ciclo no meio).
-  // So dentro do Foco -- senao reativaria o audio com o usuario nas Tarefas.
+  // So quando a musica deve estar tocando (Foco, ou fora dele com o ciclo
+  // rodando) -- senao reativaria o audio com o usuario parado nas Tarefas.
   useEffect(() => {
     if (timer.cycle !== prevCycleRef.current) {
       prevCycleRef.current = timer.cycle;
-      if (section === "foco" && musicOn && musicSrc) startMusic(musicSrc);
+      if (musicShouldPlay && musicSrc) startMusic(musicSrc);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer.cycle]);
@@ -1933,7 +1936,6 @@ function TimerApp({ session, onLogout, entered }) {
   useEffect(() => {
     if (!musicOn) return;
     const ducking =
-      section === "foco" &&
       timer.running &&
       timer.remaining >= 1 &&
       timer.remaining <= 7;
