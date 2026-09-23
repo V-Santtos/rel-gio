@@ -18,6 +18,9 @@ export function embedOf(href) {
       src: `https://www.instagram.com/${kind}/${match[2]}/embed`,
       vertical: true,
       label: "Instagram",
+      // O player do Instagram e recortado para mostrar SO o video (sem perfil,
+      // curtidas e comentarios) — ver .lpmodal__panel.is-instagram no CSS.
+      crop: true,
     };
   }
 

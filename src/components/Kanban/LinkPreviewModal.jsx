@@ -68,7 +68,9 @@ export default function LinkPreviewModal({ href, title, icon, embed, onClose }) 
     >
       <div
         ref={panelRef}
-        className={`lpmodal__panel${embed.vertical ? " is-vertical" : ""}`}
+        className={`lpmodal__panel${embed.vertical ? " is-vertical" : ""}${
+          embed.crop ? " is-instagram" : ""
+        }`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -104,6 +106,7 @@ export default function LinkPreviewModal({ href, title, icon, embed, onClose }) 
             title={`Prévia: ${title}`}
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write"
             allowFullScreen
+            scrolling="no"
             referrerPolicy="strict-origin-when-cross-origin"
           />
         </div>

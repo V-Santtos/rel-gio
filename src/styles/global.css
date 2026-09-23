@@ -7174,3 +7174,22 @@ button.account-menu__item:focus-visible {
     padding: 0;
   }
 }
+
+/* Instagram: mostra SO o video. A janela tem a proporcao da area de midia do
+   player (4:5 da largura); o iframe sobe o cabecalho de perfil (~54px) e o
+   resto (curtidas, comentarios) fica abaixo, cortado. Sem rolagem. */
+.lpmodal__panel.is-instagram {
+  width: min(440px, 100%, calc((100dvh - 100px) * 0.8));
+}
+.lpmodal__panel.is-instagram .lpmodal__frame {
+  height: auto;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #000;
+}
+.lpmodal__panel.is-instagram .lpmodal__frame iframe {
+  inset: auto;
+  top: -54px;
+  left: 0;
+  height: calc(100% + 54px + 600px);
+}
