@@ -2323,22 +2323,42 @@ button.account-menu__item:focus-visible {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    transparent 30%,
-    rgba(0, 0, 0, 0.5) 58%,
+    transparent 22%,
+    rgba(0, 0, 0, 0.55) 52%,
     rgba(0, 0, 0, 0.94) 100%
   );
   pointer-events: none;
 }
-.kcard.has-cover-image .kcard__main {
+/* Titulo + selos (data, checklist) empilhados por cima da foto, ancorados
+   embaixo: a foto ocupa o cartao inteiro, sem faixa escura cortando. */
+.kcard.has-cover-image .kcard__overlay {
   position: absolute;
   left: 12px;
   right: 12px;
   bottom: 10px;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.kcard.has-cover-image.has-label-bars .kcard__overlay {
+  right: 30px;
+}
+.kcard.has-cover-image .kcard__main {
   align-items: flex-end;
 }
-.kcard.has-cover-image.has-label-bars .kcard__main {
-  right: 30px;
+.kcard.has-cover-image .kcard__overlay .kcard__meta,
+.kcard.has-cover-image .kcard__overlay .duebadge:not([class*="is-"]) {
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.kcard.has-cover-image .kcard__overlay .duebadge {
+  margin: 0;
+}
+.kcard.has-cover-image .kcard__overlay .kcard__progress {
+  background: rgba(255, 255, 255, 0.28);
 }
 .kcard.has-cover-image .kcard__title {
   color: #fff;

@@ -699,6 +699,37 @@ export default function DayLane({
     const stats = checklistStats(card);
     const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
 
+    // Selo de data + progresso do checklist. Com capa de FOTO eles vao pra
+    // dentro da imagem (junto do titulo), sem faixa escura cortando a foto.
+    const badges = (
+      <>
+        {card.startDate || card.dueAt ? (() => {
+          const status = dueStatus(card);
+          return (
+            <span
+              className={`duebadge${status ? ` is-${status}` : ""}`}
+              title={status ? DUE_STATUS_LABEL[status] : undefined}
+            >
+              <ClockIcon size={13} strokeWidth={2.3} aria-hidden="true" />
+              {formatCardDates(card, { withTime: false })}
+            </span>
+          );
+        })() : null}
+        {stats.total ? (
+          <div className="kcard__meta">
+            <CheckSquare className="kcard__meta-icon" size={14} strokeWidth={2.2} />
+            <span className="kcard__meta-count">
+              {stats.done}/{stats.total}
+            </span>
+            <span className="kcard__progress" aria-hidden="true">
+              <span className="kcard__progress-fill" style={{ width: `${pct}%` }} />
+            </span>
+            <span className="kcard__pct">{pct}%</span>
+          </div>
+        ) : null}
+      </>
+    );
+
     return (
       <article
         key={card.id}
@@ -738,7 +769,7 @@ export default function DayLane({
               <p className="kcard__title">{card.title}</p>
             </div>
           );
-          // Com foto: o titulo vai DENTRO da imagem, sobre um degrade escuro.
+          // Com foto: titulo e selos vao DENTRO da imagem, sobre um degrade escuro.
           if (cover.type !== "image") return main;
           return (
             <div className="kcard__cover kcard__cover--image">
@@ -748,34 +779,14 @@ export default function DayLane({
                 style={{ objectPosition: `${cover.x * 100}% ${cover.y * 100}%` }}
                 draggable={false}
               />
-              {main}
+              <div className="kcard__overlay">
+                {main}
+                {badges}
+              </div>
             </div>
           );
         })()}
-        {card.startDate || card.dueAt ? (() => {
-          const status = dueStatus(card);
-          return (
-            <span
-              className={`duebadge${status ? ` is-${status}` : ""}`}
-              title={status ? DUE_STATUS_LABEL[status] : undefined}
-            >
-              <ClockIcon size={13} strokeWidth={2.3} aria-hidden="true" />
-              {formatCardDates(card, { withTime: false })}
-            </span>
-          );
-        })() : null}
-        {stats.total ? (
-          <div className="kcard__meta">
-            <CheckSquare className="kcard__meta-icon" size={14} strokeWidth={2.2} />
-            <span className="kcard__meta-count">
-              {stats.done}/{stats.total}
-            </span>
-            <span className="kcard__progress" aria-hidden="true">
-              <span className="kcard__progress-fill" style={{ width: `${pct}%` }} />
-            </span>
-            <span className="kcard__pct">{pct}%</span>
-          </div>
-        ) : null}
+        {cover.type !== "image" ? badges : null}
         {hasLabelBars ? (
           <div
             className={`kcard__label-bars is-count-${cardLabels.length}`}
