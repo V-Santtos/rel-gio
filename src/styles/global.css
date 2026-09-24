@@ -4552,6 +4552,100 @@ html.is-card-dragging .kcard,
   outline: none;
   border-color: var(--accent);
 }
+/* Popover de lembrete do cartao (Modo Semana): reaproveita o HH:MM dos
+   alarmes e os botoes do popover de datas. */
+.reminderpop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reminderpop__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.reminderpop__hint strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.reminderpop__time {
+  align-self: center;
+}
+.reminderpop__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reminderpop__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.reminderpop__repeat {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--field-border);
+  border-radius: 9px;
+  background: var(--field-bg);
+}
+.reminderpop__opt,
+.reminderpop__day {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.reminderpop__opt {
+  height: 30px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.reminderpop__opt.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.reminderpop__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.reminderpop__day {
+  height: 32px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.reminderpop__day.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--fg);
+}
+@media (hover: hover) {
+  .reminderpop__opt:not(.is-active):hover,
+  .reminderpop__day:not(.is-active):hover {
+    color: var(--fg);
+  }
+}
+.reminderpop__opt:focus-visible,
+.reminderpop__day:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.datespop__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.duebadge.duebadge--reminder svg {
+  color: var(--accent);
+}
+
 .datespop__save,
 .datespop__remove {
   width: 100%;

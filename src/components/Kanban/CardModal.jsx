@@ -12,6 +12,8 @@ import {
   Sunrise,
   Sun,
   Moon,
+  SunMoon,
+  Bell,
   Check,
   Paperclip,
   Image as ImageIcon,
@@ -28,6 +30,7 @@ import { markdownUrlTransform } from "./markdownExtensions.js";
 import { socialNetworkOf } from "./socialLinks.js";
 import ChecklistItemText from "./ChecklistItemText.jsx";
 import DatesPopover from "./DatesPopover.jsx";
+import ReminderPopover from "./ReminderPopover.jsx";
 import { MenuItem, MenuList } from "../MenuList.jsx";
 import { DUE_STATUS_LABEL, dueStatus, formatCardDates } from "./cardDates.js";
 import ReactMarkdown from "react-markdown";
@@ -99,6 +102,7 @@ const PERIOD_OPTS = [
 export default function CardModal({
   card,
   day,
+  dayKey = null,
   weekMode = false,
   labelCatalog = null,
   attachmentsApi = null,
@@ -117,6 +121,7 @@ export default function CardModal({
   const periodBtnRef = useRef(null);
   const coverBtnRef = useRef(null);
   const datesBtnRef = useRef(null);
+  const reminderBtnRef = useRef(null);
   const bodyRef = useRef(null);
   const titleRowRef = useRef(null);
   const stickyBarRef = useRef(null);
@@ -807,7 +812,7 @@ export default function CardModal({
           {weekMode ? (
             (() => {
               const opt = PERIOD_OPTS.find((o) => o.key === draft.period);
-              const PeriodIcon = opt?.Icon || Clock;
+              const PeriodIcon = opt?.Icon || SunMoon;
               return (
                 <button
                   type="button"
@@ -827,6 +832,21 @@ export default function CardModal({
                 </button>
               );
             })()
+          ) : null}
+          {weekMode ? (
+            <button
+              type="button"
+              ref={reminderBtnRef}
+              className={`cardmodal__action${draft.reminderTime ? " has-value" : ""}${
+                menu === "reminder" ? " is-open" : ""
+              }`}
+              aria-haspopup="dialog"
+              aria-expanded={menu === "reminder"}
+              onClick={() => setMenu(menu === "reminder" ? null : "reminder")}
+            >
+              <Bell size={16} strokeWidth={2.2} />
+              <span>{draft.reminderTime ? `Lembrete · ${draft.reminderTime}` : "Lembrete"}</span>
+            </button>
           ) : null}
         </div>
         {weekMode && periodError && !draft.period ? (
@@ -1244,8 +1264,38 @@ export default function CardModal({
                 if (canUpload) attachInputRef.current?.click();
               }}
             />
+            {weekMode ? (
+              <MenuItem
+                icon={<Bell size={16} strokeWidth={2.2} />}
+                label="Lembrete"
+                onSelect={() => openFromBar("reminder")}
+              />
+            ) : null}
           </MenuList>
         </Popover>
+      ) : null}
+
+      {menu === "reminder" ? (
+        <ReminderPopover
+          anchorRef={menuFromBar ? addBtnRef : reminderBtnRef}
+          day={day}
+          dayKey={dayKey}
+          time={draft.reminderTime || null}
+          repeat={draft.reminderRepeat || null}
+          days={draft.reminderDays || []}
+          onSave={(reminder) =>
+            patch(
+              reminder
+                ? {
+                    reminderTime: reminder.time,
+                    reminderRepeat: reminder.repeat,
+                    reminderDays: reminder.days,
+                  }
+                : { reminderTime: null, reminderRepeat: null, reminderDays: [] }
+            )
+          }
+          onClose={() => setMenu(null)}
+        />
       ) : null}
 
       {menu === "dates" ? (

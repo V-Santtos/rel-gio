@@ -132,3 +132,56 @@ export function loadAllAlarms() {
   }
   return result;
 }
+
+// --- Lembretes de cartao (Modo Semana) --------------------------------------
+// Um lembrete por cartao: horario HH:MM que toca no DIA da coluna do cartao.
+// O board (TarefasSection) grava aqui um espelho dos lembretes ativos para o
+// verificador global (App.jsx) ler mesmo com outra secao aberta. Chave por
+// usuario para uma conta nao disparar os lembretes de outra no mesmo aparelho.
+
+const REMINDERS_PREFIX = "fluxtime.card-reminders.";
+const WEEK_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+/** Chave do dia da semana (monday..sunday) de uma data. */
+export function weekDayKey(date = new Date()) {
+  return WEEK_KEYS[date.getDay()];
+}
+
+/** Lembrete: { id, title, time: "HH:MM", repeat, days, dayKey }. */
+export function saveCardReminders(userId, reminders) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(REMINDERS_PREFIX + (userId || "local"), JSON.stringify(reminders));
+  } catch {
+    /* storage indisponivel: ignora */
+  }
+}
+
+export function loadCardReminders(userId) {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(REMINDERS_PREFIX + (userId || "local")) || "[]"
+    );
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.time === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** O lembrete toca hoje? once = dia da coluna; daily = sempre; days = marcados. */
+export function reminderDueToday(reminder, today = weekDayKey()) {
+  if (reminder.repeat === "daily") return true;
+  if (reminder.repeat === "days") return (reminder.days || []).includes(today);
+  return reminder.dayKey === today;
+}
+
+/** Texto curto da repeticao (tooltip do selo no cartao). */
+export function reminderRepeatLabel(repeat, days = []) {
+  if (repeat === "daily") return "todo dia";
+  if (repeat === "days") {
+    const names = { monday: "seg", tuesday: "ter", wednesday: "qua", thursday: "qui", friday: "sex", saturday: "sáb", sunday: "dom" };
+    return days.map((d) => names[d]).filter(Boolean).join(", ");
+  }
+  return "uma vez";
+}

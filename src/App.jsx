@@ -61,6 +61,10 @@ import {
   nowHHMM,
   minuteKey,
   showAlarmNotification,
+  loadCardReminders,
+  saveCardReminders,
+  reminderDueToday,
+  weekDayKey,
 } from "./components/Kanban/alarms.js";
 import { AlarmToast } from "./components/Kanban/DayLane.jsx";
 import {
@@ -601,6 +605,54 @@ function TarefasSection({ userId }) {
     setWeekGuideVisible(false);
   };
 
+  // Espelha os lembretes ativos (Modo Semana) no localStorage para o
+  // verificador global de alarmes do TimerApp.
+  useEffect(() => {
+    if (!boardReady) return;
+    saveCardReminders(
+      userId,
+      lanes
+        .filter((lane) => isWeekDayKey(lane.dayKey))
+        .flatMap((lane) =>
+          lane.cards
+            .filter((card) => card.reminderTime && !card.done)
+            .map((card) => ({
+              id: card.id,
+              title: card.title || "",
+              time: card.reminderTime,
+              repeat: card.reminderRepeat || "once",
+              days: card.reminderDays || [],
+              dayKey: lane.dayKey,
+            }))
+        )
+    );
+  }, [lanes, boardReady, userId]);
+
+  // Lembrete "uma vez" que ja tocou (verificador global): tira do estado.
+  // O banco ja foi atualizado por quem disparou.
+  useEffect(() => {
+    const onDone = (event) => {
+      const cardId = event.detail?.cardId;
+      if (!cardId) return;
+      setLanes((list) =>
+        list.map((lane) =>
+          lane.cards.some((card) => card.id === cardId)
+            ? {
+                ...lane,
+                cards: lane.cards.map((card) =>
+                  card.id === cardId
+                    ? { ...card, reminderTime: null, reminderRepeat: null, reminderDays: [] }
+                    : card
+                ),
+              }
+            : lane
+        )
+      );
+    };
+    window.addEventListener("fluxtime:reminder-done", onDone);
+    return () => window.removeEventListener("fluxtime:reminder-done", onDone);
+  }, []);
+
   const laneDrag = useRef(null);
   const cardDrag = useRef(null);
   const [liftedLaneId, setLiftedLaneId] = useState(null);
@@ -669,7 +721,7 @@ function TarefasSection({ userId }) {
         supabase
           .from("tasks")
           .select(
-            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at"
+            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at, reminder_time, reminder_repeat, reminder_days"
           )
           .eq("user_id", userId)
           .neq("status", "archived")
@@ -775,6 +827,9 @@ function TarefasSection({ userId }) {
           cover: coverFromRow(task),
           startDate: task.start_date || null,
           dueAt: task.due_at || null,
+          reminderTime: task.reminder_time ? String(task.reminder_time).slice(0, 5) : null,
+          reminderRepeat: task.reminder_time ? task.reminder_repeat || "once" : null,
+          reminderDays: task.reminder_days || [],
           period: task.period || null,
           order: task.sort_order ?? list.length,
         });
@@ -995,6 +1050,9 @@ function TarefasSection({ userId }) {
         cover: coverToPayload(card.cover, card.attachments),
         start_date: card.startDate || null,
         due_at: card.dueAt || null,
+        reminder_time: card.reminderTime || null,
+        reminder_repeat: card.reminderTime ? card.reminderRepeat || "once" : null,
+        reminder_days: card.reminderTime && card.reminderRepeat === "days" ? card.reminderDays || [] : null,
         checklists: (card.checklists || []).map(cleanChecklist).map((list, index) => ({
           id: list.id,
           title: list.title || "Checklist",
@@ -1886,6 +1944,7 @@ function TarefasSection({ userId }) {
       {boardReady ? visibleLanes.map((lane) => (
         <DayLane
           key={lane.id}
+          dayKey={lane.dayKey}
           day={isWeekDayKey(lane.dayKey)
             ? DIAS_SEMANA[WEEK_DAY_KEYS.indexOf(lane.dayKey)]
             : lane.title}
@@ -2077,7 +2136,6 @@ function TimerApp({ session, onLogout, entered }) {
     const check = () => {
       const all = loadAllAlarms();
       const active = all.filter((e) => e.alarm.enabled);
-      if (!active.length) return;
       const hhmm = nowHHMM();
       const mk = minuteKey();
       active.forEach(({ alarm }) => {
@@ -2092,11 +2150,43 @@ function TimerApp({ session, onLogout, entered }) {
           setAlarmToast({ key: `${alarm.id}-${Date.now()}`, time: alarm.time, description: text });
         }
       });
+
+      // Lembretes de cartao (Modo Semana): uma vez / todo dia / dias marcados.
+      const today = weekDayKey();
+      const reminders = loadCardReminders(userId);
+      reminders.forEach((reminder) => {
+        if (reminder.time !== hhmm || !reminderDueToday(reminder, today)) return;
+        const id = `reminder:${reminder.id}@${mk}`;
+        if (globalFiredRef.current.has(id)) return;
+        globalFiredRef.current.add(id);
+        if (reminder.repeat === "once") {
+          // Uma vez: tocou, desliga (espelho local, board aberto e banco).
+          saveCardReminders(userId, reminders.filter((r) => r.id !== reminder.id));
+          window.dispatchEvent(
+            new CustomEvent("fluxtime:reminder-done", { detail: { cardId: reminder.id } })
+          );
+          if (supabase && userId) {
+            supabase
+              .from("tasks")
+              .update({ reminder_time: null, reminder_repeat: null, reminder_days: null })
+              .eq("id", reminder.id)
+              .then(({ error }) => {
+                if (error) console.warn("[reminder] erro ao desligar lembrete:", error);
+              });
+          }
+        }
+        playAlarm();
+        const text = reminder.title ? `Lembrete: ${reminder.title}` : "Lembrete do seu cartão.";
+        const shownAsSystem = document.hidden && showAlarmNotification("🔔 Flux Time", text);
+        if (!shownAsSystem) {
+          setAlarmToast({ key: `${id}-${Date.now()}`, time: reminder.time, description: text });
+        }
+      });
     };
     check();
     const interval = setInterval(check, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));

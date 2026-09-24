@@ -13,6 +13,7 @@ import {
   Clock as ClockIcon,
   CheckCircle,
   Bell,
+  Repeat,
   Trash2,
   Sunrise,
   Sun,
@@ -32,6 +33,7 @@ import {
   periodForTime,
   PERIOD_LABELS,
   ensureNotificationPermission,
+  reminderRepeatLabel,
 } from "./alarms.js";
 import { primeAlarm } from "../../lib/sound.js";
 import { makeClientId } from "../../lib/id.js";
@@ -235,6 +237,7 @@ export default function DayLane({
   onCreateLabel,
   onUpdateLabel,
   onDeleteLabel,
+  dayKey = null,
   lifted = false,
   onLaneGripDown,
   onCardPointerDown,
@@ -704,6 +707,18 @@ export default function DayLane({
     // dentro da imagem (junto do titulo), sem faixa escura cortando a foto.
     const badges = (
       <>
+        {weekMode && card.reminderTime ? (
+          <span
+            className="duebadge duebadge--reminder"
+            title={`Lembrete (${reminderRepeatLabel(card.reminderRepeat, card.reminderDays)})`}
+          >
+            <Bell size={13} strokeWidth={2.3} aria-hidden="true" />
+            {card.reminderTime}
+            {card.reminderRepeat && card.reminderRepeat !== "once" ? (
+              <Repeat size={11} strokeWidth={2.4} aria-hidden="true" />
+            ) : null}
+          </span>
+        ) : null}
         {card.startDate || card.dueAt ? (() => {
           const status = dueStatus(card);
           return (
@@ -1148,6 +1163,7 @@ export default function DayLane({
         <CardModal
           card={selectedCard}
           day={name}
+          dayKey={dayKey}
           weekMode={weekMode}
           labelCatalog={labelCatalog}
           attachmentsApi={attachmentsApi}
