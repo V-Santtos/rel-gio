@@ -7426,31 +7426,40 @@ html.is-card-dragging .kcard,
   margin: 2px 0 16px;
   padding: 0 16px;
 }
+/* Selo neutro, no mesmo idioma dos botoes ghost do Foco: sem fundo colorido,
+   borda sutil e rotulo em caixa alta como as legendas do relogio. */
 .focus-task__chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   max-width: min(460px, 100%);
-  min-height: 34px;
-  padding: 0 5px 0 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  height: 36px;
+  padding: 0 6px 0 13px;
+  border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: transparent;
   color: var(--fg);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1;
-  transition: opacity 0.4s ease, background-color 0.4s ease, border-color 0.4s ease;
+  transition: opacity 0.4s ease, border-color 0.4s ease;
 }
-.focus-task__dot {
+.focus-task__icon {
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
+  color: var(--muted);
 }
 .focus-task__label {
   flex: 0 0 auto;
   color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.focus-task__sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 14px;
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
 }
 .focus-task__title {
   min-width: 0;
@@ -7487,9 +7496,8 @@ html.is-card-dragging .kcard,
 /* Modo foco: o contexto (qual tarefa) continua visivel, mas discreto; o X so
    volta junto dos controles, no movimento do mouse. */
 .app.is-running:not(.is-revealed) .focus-task__chip {
-  opacity: 0.55;
+  opacity: 0.6;
   border-color: transparent;
-  background: transparent;
 }
 .app.is-running:not(.is-revealed) .focus-task__remove {
   opacity: 0;

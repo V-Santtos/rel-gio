@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
-import { Check, Timer, X } from "lucide-react";
+import { Check, Target, Timer, X } from "lucide-react";
 
 /**
  * Vinculo ciclo <-> tarefa (Modo Semana). O vinculo nasce no botao "Focar"
@@ -30,9 +30,10 @@ export function FocusTaskBar({ task, onUnlink }) {
 
   return (
     <div className="focus-task">
-      <div className="focus-task__chip" ref={chipRef} role="status">
-        <span className="focus-task__dot" aria-hidden="true" />
-        <span className="focus-task__label">Focando em</span>
+      <div className="focus-task__chip" ref={chipRef} role="status" aria-label={`Focando na tarefa ${task.title || "sem título"}`}>
+        <Target className="focus-task__icon" size={15} strokeWidth={2.2} aria-hidden="true" />
+        <span className="focus-task__label">Tarefa</span>
+        <span className="focus-task__sep" aria-hidden="true" />
         <span className="focus-task__title" title={task.title}>
           {task.title || "Tarefa sem título"}
         </span>
