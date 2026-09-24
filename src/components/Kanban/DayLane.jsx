@@ -14,7 +14,6 @@ import {
   CheckCircle,
   Bell,
   Repeat,
-  Timer as TimerIcon,
   Trash2,
   Sunrise,
   Sun,
@@ -709,15 +708,6 @@ export default function DayLane({
     // dentro da imagem (junto do titulo), sem faixa escura cortando a foto.
     const badges = (
       <>
-        {card.focusCycles > 0 ? (
-          <span
-            className="duebadge duebadge--focus"
-            title={`${card.focusCycles} ${card.focusCycles === 1 ? "ciclo" : "ciclos"} de foco`}
-          >
-            <TimerIcon size={13} strokeWidth={2.3} aria-hidden="true" />
-            {card.focusCycles}
-          </span>
-        ) : null}
         {weekMode && card.reminderTime ? (
           <span
             className="duebadge duebadge--reminder"

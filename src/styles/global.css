@@ -7568,7 +7568,3 @@ html.is-card-dragging .kcard,
   display: none;
 }
 
-/* Selo de ciclos de foco no cartao */
-.duebadge.duebadge--focus svg {
-  color: var(--accent);
-}

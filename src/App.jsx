@@ -641,8 +641,8 @@ function TarefasSection({ userId, onFocusTask }) {
   }, [lanes, boardReady, userId]);
 
   // Atualizacoes vindas de fora do board (o banco ja foi gravado por quem
-  // disparou): lembrete "uma vez" que tocou, ciclo de foco concluido numa
-  // tarefa vinculada e tarefa concluida pelo aviso de fim de sessao.
+  // disparou): lembrete "uma vez" que tocou e tarefa vinculada concluida
+  // pelo fim da sessao de foco.
   useEffect(() => {
     const patchCard = (cardId, patch) =>
       setLanes((list) =>
@@ -660,15 +660,11 @@ function TarefasSection({ userId, onFocusTask }) {
     const onReminderDone = (e) =>
       e.detail?.cardId &&
       patchCard(e.detail.cardId, { reminderTime: null, reminderRepeat: null, reminderDays: [] });
-    const onFocusCycle = (e) =>
-      e.detail?.cardId && patchCard(e.detail.cardId, { focusCycles: e.detail.count });
     const onTaskDone = (e) => e.detail?.cardId && patchCard(e.detail.cardId, { done: true });
     window.addEventListener("fluxtime:reminder-done", onReminderDone);
-    window.addEventListener("fluxtime:focus-cycle", onFocusCycle);
     window.addEventListener("fluxtime:task-done", onTaskDone);
     return () => {
       window.removeEventListener("fluxtime:reminder-done", onReminderDone);
-      window.removeEventListener("fluxtime:focus-cycle", onFocusCycle);
       window.removeEventListener("fluxtime:task-done", onTaskDone);
     };
   }, []);
@@ -741,7 +737,7 @@ function TarefasSection({ userId, onFocusTask }) {
         supabase
           .from("tasks")
           .select(
-            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at, reminder_time, reminder_repeat, reminder_days, metadata"
+            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at, reminder_time, reminder_repeat, reminder_days"
           )
           .eq("user_id", userId)
           .neq("status", "archived")
@@ -850,7 +846,6 @@ function TarefasSection({ userId, onFocusTask }) {
           reminderTime: task.reminder_time ? String(task.reminder_time).slice(0, 5) : null,
           reminderRepeat: task.reminder_time ? task.reminder_repeat || "once" : null,
           reminderDays: task.reminder_days || [],
-          focusCycles: Number(task.metadata?.focus_cycles) || 0,
           period: task.period || null,
           order: task.sort_order ?? list.length,
         });
@@ -2336,40 +2331,6 @@ function TimerApp({ session, onLogout, entered }) {
     [focusTaskKey]
   );
 
-  // +1 ciclo de foco no cartao (tasks.metadata.focus_cycles). O board, se
-  // estiver aberto, recebe o novo total por evento.
-  const bumpFocusCycles = useCallback(
-    async (taskId) => {
-      if (!supabase || !userId) return;
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("metadata")
-        .eq("id", taskId)
-        .maybeSingle();
-      if (error || !data) return;
-      const meta = data.metadata || {};
-      const count = (Number(meta.focus_cycles) || 0) + 1;
-      window.dispatchEvent(
-        new CustomEvent("fluxtime:focus-cycle", { detail: { cardId: taskId, count } })
-      );
-      const { error: saveError } = await supabase
-        .from("tasks")
-        .update({ metadata: { ...meta, focus_cycles: count } })
-        .eq("id", taskId);
-      if (saveError) console.warn("[focus] erro ao somar ciclo:", saveError);
-    },
-    [userId]
-  );
-
-  const handlePhaseEnd = useCallback(
-    (mode, transition) => {
-      playPhaseEnd(mode, transition);
-      if (mode !== "focus" || !focusTaskRef.current) return;
-      bumpFocusCycles(focusTaskRef.current.id);
-    },
-    [bumpFocusCycles]
-  );
-
   // Fim da sessao com tarefa vinculada: o ciclo ja fazia parte da tarefa,
   // entao ela e concluida automaticamente (banco + board) e o vinculo sai.
   const completeFocusTask = (task) => {
@@ -2408,7 +2369,7 @@ function TimerApp({ session, onLogout, entered }) {
 
   const timer = useTimer({
     plan,
-    onPhaseEnd: handlePhaseEnd,
+    onPhaseEnd: playPhaseEnd,
     onSessionEnd: handleSessionEnd,
   });
 
