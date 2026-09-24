@@ -7451,10 +7451,10 @@ html.is-card-dragging .kcard,
 .focus-task__chip.is-linked .focus-task__icon {
   color: color-mix(in srgb, var(--accent) 80%, var(--muted));
 }
-/* Feedback de tarefa concluida no fim da sessao. */
+/* Feedback de tarefa concluida no fim da sessao: so o texto, sem pilula. */
 .focus-task__chip.is-done {
-  padding-right: 14px;
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  padding: 0;
+  border-color: transparent;
 }
 .focus-task__chip.is-done .focus-task__label {
   color: var(--fg);
@@ -7463,7 +7463,24 @@ html.is-card-dragging .kcard,
   color: var(--muted);
   font-weight: 500;
 }
+.focus-task__check-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+/* Onda que sai do check quando ele "estala" (GSAP). */
+.focus-task__ripple {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
 .focus-task__check {
+  position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
