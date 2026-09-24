@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import AttachmentImage from "./AttachmentImage.jsx";
 import AttachmentsSection from "./AttachmentsSection.jsx";
+import ImageViewer, { ImageViewerContext } from "./ImageViewer.jsx";
+import { isImageAttachment } from "./attachments.js";
 import CoverPopover from "./CoverPopover.jsx";
 import { NO_COVER, clamp01, readableTextOn, resolveCover } from "./cover.js";
 import { CardAttachmentsContext, DescriptionImage } from "./DescriptionImage.jsx";
@@ -216,6 +218,22 @@ export default function CardModal({
       cover:
         d.cover?.type === "image" && d.cover.attachmentId === att.id ? NO_COVER : d.cover,
     }));
+  };
+
+  // Visualizador de imagens: navega entre as imagens anexadas do cartao;
+  // imagem externa (URL colada na descricao) abre sozinha.
+  const [viewer, setViewer] = useState(null); // { items, index }
+  const openImage = ({ attachment, src, alt }) => {
+    if (attachment) {
+      const items = (draft.attachments || [])
+        .filter(isImageAttachment)
+        .map((att) => ({ key: att.id, attachment: att, name: att.name, size: att.size }));
+      const index = Math.max(0, items.findIndex((it) => it.key === attachment.id));
+      if (items.length) setViewer({ items, index });
+      return;
+    }
+    const name = alt || src.split("/").pop()?.split("?")[0] || "Imagem";
+    setViewer({ items: [{ key: src, src, name }], index: 0 });
   };
 
   const toggleCoverAttachment = (att) => {
@@ -976,6 +994,7 @@ export default function CardModal({
             ) : null}
           </div>
           <CardAttachmentsContext.Provider value={attachments}>
+          <ImageViewerContext.Provider value={openImage}>
           {descEditing ? (
             <>
               <MarkdownEditor
@@ -1008,7 +1027,9 @@ export default function CardModal({
                 rehypePlugins={[rehypeHighlightSyntax]}
                 urlTransform={markdownUrlTransform}
                 components={{
-                  img: ({ node: _node, src, alt }) => <DescriptionImage src={src} alt={alt} />,
+                  img: ({ node: _node, src, alt, title }) => (
+                    <DescriptionImage src={src} alt={alt} title={title} interactive />
+                  ),
                   // Link abre em nova aba e NAO borbulha pro container
                   // "clique pra editar" (senao navegava E abria o editor).
                   // Link de rede social ganha o logo da rede na frente.
@@ -1065,6 +1086,7 @@ export default function CardModal({
               Adicione uma descrição mais detalhada…
             </button>
           )}
+          </ImageViewerContext.Provider>
           </CardAttachmentsContext.Provider>
         </div>
 
@@ -1076,6 +1098,7 @@ export default function CardModal({
           onUpload={uploadAttachment}
           onDelete={removeAttachment}
           onToggleCover={toggleCoverAttachment}
+          onPreview={(attachment) => openImage({ attachment })}
         />
 
         {checklists.map((list) => {
@@ -1300,6 +1323,17 @@ export default function CardModal({
             ) : null}
           </MenuList>
         </Popover>
+      ) : null}
+
+      {viewer ? (
+        <ImageViewer
+          items={viewer.items}
+          index={viewer.index}
+          onIndex={(index) => setViewer((v) => (v ? { ...v, index } : v))}
+          onClose={() => setViewer(null)}
+          coverId={cover.type === "image" ? cover.attachmentId : null}
+          onToggleCover={toggleCoverAttachment}
+        />
       ) : null}
 
       {menu === "reminder" ? (

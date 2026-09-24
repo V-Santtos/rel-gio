@@ -9,7 +9,7 @@ import {
   validateAttachmentFile,
 } from "./attachments.js";
 
-function AttachmentRow({ attachment, isCover, onToggleCover, onDelete }) {
+function AttachmentRow({ attachment, isCover, onToggleCover, onDelete, onPreview }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const image = isImageAttachment(attachment);
@@ -20,8 +20,13 @@ function AttachmentRow({ attachment, isCover, onToggleCover, onDelete }) {
     return () => clearTimeout(t);
   }, [confirming]);
 
-  // A URL assinada e gerada no clique: um link salvo nunca expira na tela.
+  // Imagem abre no visualizador do app; outros arquivos (PDF) em nova aba,
+  // com a URL assinada gerada no clique (um link salvo nunca expira na tela).
   const open = async () => {
+    if (image && onPreview) {
+      onPreview(attachment);
+      return;
+    }
     const tab = window.open("", "_blank");
     if (tab) tab.opener = null;
     const url = await getSignedUrl(attachment.path, { force: true });
@@ -92,6 +97,7 @@ export default function AttachmentsSection({
   onUpload,
   onDelete,
   onToggleCover,
+  onPreview,
   fileInputRef,
 }) {
   const [uploading, setUploading] = useState(0);
@@ -181,6 +187,7 @@ export default function AttachmentsSection({
               attachment={att}
               isCover={cover.type === "image" && cover.attachmentId === att.id}
               onToggleCover={onToggleCover}
+              onPreview={onPreview}
               onDelete={remove}
             />
           ))}
