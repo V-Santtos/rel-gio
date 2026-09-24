@@ -14,9 +14,10 @@ import { Check, Target, X } from "lucide-react";
 
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Brilho do pulso: anel terracota bem fraco que "respira" em volta da borda.
-const GLOW_OFF = "0 0 0 0px rgba(231, 111, 81, 0)";
-const GLOW_ON = "0 0 0 4px rgba(231, 111, 81, 0.12)";
+// Brilho do pulso: luz terracota difusa (blur grande, alfa baixo) que
+// "respira" em volta do selo, sem anel marcado.
+const GLOW_OFF = "0 0 14px 0px rgba(231, 111, 81, 0.04)";
+const GLOW_ON = "0 0 26px 2px rgba(231, 111, 81, 0.14)";
 
 export function FocusTaskBar({ task, completed, onUnlink, onCompletedShown }) {
   const chipRef = useRef(null);
@@ -38,7 +39,7 @@ export function FocusTaskBar({ task, completed, onUnlink, onCompletedShown }) {
     const pulse = gsap.fromTo(
       el,
       { boxShadow: GLOW_OFF },
-      { boxShadow: GLOW_ON, duration: 1.6, ease: "sine.inOut", repeat: -1, yoyo: true, delay: 0.45 }
+      { boxShadow: GLOW_ON, duration: 2.4, ease: "sine.inOut", repeat: -1, yoyo: true, delay: 0.45 }
     );
     return () => {
       tl.kill();
