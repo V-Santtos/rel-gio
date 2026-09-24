@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import gsap from "gsap";
 import { Flip } from "gsap/Flip";
 
@@ -26,6 +26,7 @@ import {
   NavTaskIcon,
 } from "./components/NavIcons.jsx";
 import DayLane from "./components/Kanban/DayLane.jsx";
+import { quietArrivals } from "./components/Kanban/cardDrag.js";
 import {
   DEFAULT_LABELS,
   setLabels as setRuntimeLabels,
@@ -600,8 +601,11 @@ function TarefasSection({ userId }) {
     setWeekGuideVisible(false);
   };
 
-  const dragFrom = useRef(null);
-  const lastOver = useRef(null);
+  const laneDrag = useRef(null);
+  const cardDrag = useRef(null);
+  const [liftedLaneId, setLiftedLaneId] = useState(null);
+  const lanesRef = useRef(lanes);
+  lanesRef.current = lanes;
   const flipState = useRef(null);
   const lanesAnimated = useRef(false);
   const pendingLaneAnimation = useRef(null);
@@ -1322,38 +1326,396 @@ function TarefasSection({ userId }) {
     });
   };
 
-  // Reordenacao das colunas pelo grip (HTML5 drag). A ordem vive aqui; as keys
-  // sao estaveis, entao o estado interno de cada lane acompanha a coluna.
-  const handleDragStart = (id) => {
-    dragFrom.current = id;
-    lastOver.current = id;
-  };
-  const handleDragEnter = (id) => {
-    const from = dragFrom.current;
-    if (from == null || from === id) return;
-    // Anti-flick: o dragenter borbulha dos filhos e dispara varias vezes para
-    // o mesmo alvo. So reage quando o alvo MUDA de fato.
-    if (lastOver.current === id) return;
-    lastOver.current = id;
-    // Captura as posicoes ATUAIS das colunas antes do DOM reordenar; o Flip
-    // anima do estado antigo para o novo (deslize real, nao "salto").
-    if (boardRef.current) {
-      flipState.current = Flip.getState(boardRef.current.querySelectorAll(".lane"));
-    }
+  // Reordenacao das colunas pelo grip (ponteiro + GSAP). A coluna "descola" e
+  // segue o cursor no eixo X; as vizinhas deslizam (Flip) para abrir espaco em
+  // tempo real, entao da para ir e voltar livremente. A ordem vive aqui; as
+  // keys sao estaveis, entao o estado interno de cada lane acompanha a coluna.
+  // So desktop: no touch o grip nem aparece (mobile/kanban.css).
+  const moveLane = (fromId, toId) => {
     setLanes((prev) => {
-      const fromIdx = prev.findIndex((lane) => lane.id === from);
-      const toIdx = prev.findIndex((lane) => lane.id === id);
-      if (fromIdx === -1 || toIdx === -1) return prev;
-      const next = [...prev];
+      const next = [...prev].sort(bySort);
+      const fromIdx = next.findIndex((lane) => lane.id === fromId);
+      const toIdx = next.findIndex((lane) => lane.id === toId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
       next.splice(toIdx, 0, next.splice(fromIdx, 1)[0]);
-      const ordered = next.map((lane, index) => ({ ...lane, sortOrder: index }));
-      persistLaneOrder(ordered);
-      return ordered;
+      return next.map((lane, index) => ({ ...lane, sortOrder: index }));
     });
   };
-  const handleDragEnd = () => {
-    dragFrom.current = null;
-    lastOver.current = null;
+
+  const handleLaneGripDown = (e, laneId) => {
+    if (e.button !== 0 || e.pointerType === "touch" || laneDrag.current || cardDrag.current) return;
+    const board = boardRef.current;
+    const el = e.currentTarget.closest(".lane");
+    if (!board || !el) return;
+    e.preventDefault();
+    const laneEls = () => [...board.querySelectorAll(".lane")];
+    const drag = {
+      pointerX: e.clientX,
+      startX: e.clientX,
+      grabX: e.clientX - el.getBoundingClientRect().left,
+      started: false,
+      moved: false,
+      slots: [],
+      raf: 0,
+    };
+    laneDrag.current = drag;
+
+    // Cola a coluna no cursor: x = onde o cursor quer - posicao de layout.
+    const follow = () => {
+      const layoutLeft = el.getBoundingClientRect().left - gsap.getProperty(el, "x");
+      gsap.set(el, { x: drag.pointerX - drag.grabX - layoutLeft, force3D: true });
+    };
+
+    // Slot mais proximo da borda esquerda da coluna arrastada = nova posicao.
+    const reorder = () => {
+      const left =
+        drag.pointerX - drag.grabX - board.getBoundingClientRect().left + board.scrollLeft;
+      let target = 0;
+      drag.slots.forEach((slot, i) => {
+        if (Math.abs(left - slot) < Math.abs(left - drag.slots[target])) target = i;
+      });
+      const els = laneEls();
+      const toId = els[target]?.dataset.laneId;
+      if (!toId || toId === laneId) return;
+      flipState.current = Flip.getState(els.filter((node) => node !== el));
+      drag.moved = true;
+      flushSync(() => moveLane(laneId, toId));
+      follow();
+    };
+
+    // Auto-scroll horizontal quando o cursor encosta nas bordas do quadro.
+    const tick = () => {
+      const r = board.getBoundingClientRect();
+      const edge = 70;
+      let dx = 0;
+      if (drag.pointerX < r.left + edge) dx = -(r.left + edge - drag.pointerX);
+      else if (drag.pointerX > r.right - edge) dx = drag.pointerX - (r.right - edge);
+      if (dx) {
+        board.scrollLeft += Math.max(-14, Math.min(14, dx / 5));
+        follow();
+        reorder();
+      }
+      drag.raf = requestAnimationFrame(tick);
+    };
+
+    const onMove = (ev) => {
+      drag.pointerX = ev.clientX;
+      if (!drag.started) {
+        if (Math.abs(ev.clientX - drag.startX) < 4) return;
+        drag.started = true;
+        const br = board.getBoundingClientRect();
+        drag.slots = laneEls().map(
+          (node) => node.getBoundingClientRect().left - br.left + board.scrollLeft
+        );
+        document.documentElement.classList.add("is-lane-dragging");
+        setLiftedLaneId(laneId);
+        drag.raf = requestAnimationFrame(tick);
+      }
+      follow();
+      reorder();
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      cancelAnimationFrame(drag.raf);
+      laneDrag.current = null;
+      if (!drag.started) return;
+      document.documentElement.classList.remove("is-lane-dragging");
+      if (drag.moved) persistLaneOrder([...lanesRef.current].sort(bySort));
+      // Encaixe suave no slot final.
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      gsap.to(el, {
+        x: 0,
+        duration: reduce ? 0 : 0.34,
+        ease: "power3.out",
+        overwrite: true,
+        onComplete: () => {
+          gsap.set(el, { clearProps: "transform" });
+          setLiftedLaneId((id) => (id === laneId ? null : id));
+        },
+      });
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  // Move um card para (toLaneId, index) no modo Padrao e renumera `order` das
+  // colunas afetadas. Sincroniza so os cards que mudaram (ordem ou coluna); o
+  // upsert pelo mesmo id com `lane_id` novo move a linha no Supabase.
+  const placeCard = (fromLaneId, toLaneId, cardId, index) => {
+    const current = lanesRef.current;
+    const card = current
+      .find((lane) => lane.id === fromLaneId)
+      ?.cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const changed = [];
+    const next = current.map((lane) => {
+      if (lane.id !== fromLaneId && lane.id !== toLaneId) return lane;
+      const cards = lane.cards.filter((c) => c.id !== cardId);
+      if (lane.id === toLaneId) cards.splice(index, 0, card);
+      return {
+        ...lane,
+        cards: cards.map((c, i) => {
+          const moved = c.id === cardId && fromLaneId !== toLaneId;
+          if (c.order === i && !moved) return c;
+          const nextCard = { ...c, order: i };
+          changed.push([lane.id, nextCard]);
+          return nextCard;
+        }),
+      };
+    });
+    setLanes(next);
+    changed.forEach(([id, c]) => syncCard(id, c));
+  };
+
+  // Arraste de cards no modo Padrao (ponteiro + GSAP). Um "fantasma" (clone do
+  // card, position fixed) segue o cursor livre; o card original fica
+  // invisivel no lugar. As colunas abrem/fecham o espaco so com transform
+  // (nada de setState durante o arraste). Ao soltar, o fantasma encaixa no
+  // slot e a ordem e aplicada de uma vez. So desktop.
+  const handleCardPointerDown = (e, laneId, cardId) => {
+    if (e.button !== 0 || e.pointerType === "touch" || cardDrag.current || laneDrag.current) {
+      return;
+    }
+    const board = boardRef.current;
+    const el = e.currentTarget;
+    const srcList = el.parentElement;
+    if (!board || !srcList) return;
+    const GAP = 8; // gap de .lane__cards
+    const drag = {
+      px: e.clientX,
+      py: e.clientY,
+      started: false,
+      target: null,
+      raf: 0,
+      shiftY: new WeakMap(),
+      touched: new Set(),
+    };
+    cardDrag.current = drag;
+
+    const lists = () => [...board.querySelectorAll(".lane:not(.is-collapsed) .lane__cards")];
+    const cardsIn = (list) =>
+      [...list.querySelectorAll(":scope > .kcard[data-card-id]")].filter((n) => n !== el);
+    // Posicao "virtual" de layout: sem o transform do arraste e, na coluna de
+    // origem, ja sem o buraco do card arrastado.
+    const layoutTop = (n) =>
+      n.getBoundingClientRect().top -
+      gsap.getProperty(n, "y") -
+      (drag.after.has(n) ? drag.H : 0);
+
+    const findTarget = () => {
+      const cx = drag.px - drag.grabX + drag.w / 2;
+      const cy = drag.py - drag.grabY + drag.h / 2;
+      let list = null;
+      let best = Infinity;
+      lists().forEach((l) => {
+        const r = l.getBoundingClientRect();
+        const d = cx < r.left ? r.left - cx : cx > r.right ? cx - r.right : 0;
+        if (d < best) {
+          best = d;
+          list = l;
+        }
+      });
+      if (!list) return null;
+      const index = cardsIn(list).filter(
+        (n) => layoutTop(n) + n.offsetHeight / 2 < cy
+      ).length;
+      return { list, index, laneId: list.closest(".lane")?.dataset.laneId };
+    };
+
+    const setY = (n, y) => {
+      if ((drag.shiftY.get(n) ?? 0) === y) return;
+      drag.shiftY.set(n, y);
+      drag.touched.add(n);
+      gsap.to(n, { y, duration: 0.22, ease: "power3.out", overwrite: true, force3D: true });
+    };
+    const applyShifts = () => {
+      const t = drag.target;
+      lists().forEach((list) => {
+        cardsIn(list).forEach((n, j) => {
+          let y = drag.after.has(n) ? -drag.H : 0;
+          if (t && list === t.list && j >= t.index) y += drag.H;
+          setY(n, y);
+        });
+        // Espaco extra na coluna de destino / coluna de origem encolhe.
+        const foreign = t && list === t.list && list !== srcList;
+        const left = t && t.list !== srcList && list === srcList;
+        drag.touched.add(list);
+        gsap.to(list, {
+          paddingBottom: drag.padBottom + (foreign ? drag.H : 0),
+          marginBottom: left ? -drag.H : 0,
+          duration: 0.22,
+          ease: "power3.out",
+          overwrite: true,
+        });
+      });
+    };
+
+    const update = () => {
+      gsap.set(drag.ghost, {
+        x: drag.px - drag.grabX - drag.originLeft,
+        y: drag.py - drag.grabY - drag.originTop,
+      });
+      const t = findTarget();
+      if (!t) return;
+      if (drag.target && t.list === drag.target.list && t.index === drag.target.index) return;
+      drag.target = t;
+      applyShifts();
+    };
+
+    // Auto-scroll horizontal do quadro quando o cursor encosta nas bordas.
+    const tick = () => {
+      const r = board.getBoundingClientRect();
+      const edge = 70;
+      let dx = 0;
+      if (drag.px < r.left + edge) dx = -(r.left + edge - drag.px);
+      else if (drag.px > r.right - edge) dx = drag.px - (r.right - edge);
+      if (dx) {
+        board.scrollLeft += Math.max(-14, Math.min(14, dx / 5));
+        update();
+      }
+      drag.raf = requestAnimationFrame(tick);
+    };
+
+    const begin = () => {
+      drag.started = true;
+      const rect = el.getBoundingClientRect();
+      drag.w = rect.width;
+      drag.h = rect.height;
+      drag.H = rect.height + GAP;
+      drag.grabX = drag.startX - rect.left;
+      drag.grabY = drag.startY - rect.top;
+      drag.originLeft = rect.left;
+      drag.originTop = rect.top;
+      drag.insetX = rect.left - srcList.getBoundingClientRect().left;
+      drag.padTop = parseFloat(getComputedStyle(srcList).paddingTop) || 0;
+      drag.padBottom = parseFloat(getComputedStyle(srcList).paddingBottom) || 0;
+      const srcCards = [...srcList.querySelectorAll(":scope > .kcard[data-card-id]")];
+      drag.origIndex = srcCards.indexOf(el);
+      drag.after = new Set(srcCards.slice(drag.origIndex + 1));
+
+      const ghost = el.cloneNode(true);
+      ghost.classList.add("kcard--ghost");
+      ghost.removeAttribute("data-card-id");
+      ghost.removeAttribute("tabindex");
+      ghost.setAttribute("aria-hidden", "true");
+      Object.assign(ghost.style, {
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+      });
+      document.body.appendChild(ghost);
+      drag.ghost = ghost;
+      el.style.visibility = "hidden";
+      window.getSelection()?.removeAllRanges();
+      document.documentElement.classList.add("is-card-dragging");
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce) gsap.to(ghost, { rotation: 2, scale: 1.02, duration: 0.18, ease: "power2.out" });
+      drag.target = { list: srcList, index: drag.origIndex, laneId };
+      drag.raf = requestAnimationFrame(tick);
+    };
+    drag.startX = e.clientX;
+    drag.startY = e.clientY;
+
+    const onMove = (ev) => {
+      drag.px = ev.clientX;
+      drag.py = ev.clientY;
+      if (!drag.started) {
+        if (Math.hypot(ev.clientX - drag.startX, ev.clientY - drag.startY) < 5) return;
+        begin();
+      }
+      update();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey);
+      cancelAnimationFrame(drag.raf);
+    };
+
+    const finish = (cancelled) => {
+      cleanup();
+      if (!drag.started) {
+        cardDrag.current = null;
+        return;
+      }
+      // O pointerup de um arraste ainda gera um click: nao abrir o card.
+      const block = (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+      };
+      window.addEventListener("click", block, true);
+      setTimeout(() => window.removeEventListener("click", block, true), 0);
+
+      if (cancelled || !drag.target) {
+        drag.target = { list: srcList, index: drag.origIndex, laneId };
+        applyShifts();
+      }
+      const t = drag.target;
+      const same = t.laneId === laneId && t.index === drag.origIndex;
+
+      // Slot final do card (coordenadas de viewport).
+      let top;
+      if (same) {
+        top = el.getBoundingClientRect().top;
+      } else {
+        const others = cardsIn(t.list);
+        if (t.index < others.length) {
+          top = layoutTop(others[t.index]);
+        } else if (others.length) {
+          const last = others[others.length - 1];
+          top = layoutTop(last) + last.offsetHeight + GAP;
+        } else {
+          top = t.list.getBoundingClientRect().top + drag.padTop;
+        }
+      }
+      const left = t.list.getBoundingClientRect().left + drag.insetX;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      gsap.to(drag.ghost, {
+        x: left - drag.originLeft,
+        y: top - drag.originTop,
+        rotation: 0,
+        scale: 1,
+        duration: reduce ? 0 : 0.26,
+        ease: "power3.out",
+        overwrite: true,
+        onComplete: () => {
+          if (!same) {
+            if (t.laneId !== laneId) quietArrivals.add(cardId);
+            flushSync(() => placeCard(laneId, t.laneId, cardId, t.index));
+          }
+          drag.touched.forEach((n) => {
+            gsap.killTweensOf(n);
+            gsap.set(n, { clearProps: "transform,paddingBottom,marginBottom" });
+          });
+          el.style.visibility = "";
+          drag.ghost.remove();
+          // Forca o recalculo de estilo AINDA sem transicao, para o clearProps
+          // nao animar o card de volta (o "quique") quando a classe sair.
+          void board.offsetHeight;
+          document.documentElement.classList.remove("is-card-dragging");
+          cardDrag.current = null;
+        },
+      });
+    };
+    const onUp = () => finish(false);
+    const onCancel = () => finish(true);
+    const onKey = (ev) => {
+      if (ev.key === "Escape" && drag.started) finish(true);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKey);
   };
 
   const orderedLanes = [...lanes].sort(bySort);
@@ -1403,14 +1765,14 @@ function TarefasSection({ userId }) {
       });
   };
 
-  // Anima o deslize das colunas apos a ordem mudar (GSAP Flip).
+  // Anima o deslize das colunas vizinhas apos a ordem mudar (GSAP Flip). Sem
+  // `absolute`: tirar as vizinhas do fluxo empurraria a coluna arrastada.
   useLayoutEffect(() => {
     if (!flipState.current) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     Flip.from(flipState.current, {
-      duration: reduce ? 0 : 0.42,
+      duration: reduce ? 0 : 0.32,
       ease: "power3.out",
-      absolute: true,
       force3D: true,
       overwrite: true,
     });
@@ -1553,9 +1915,9 @@ function TarefasSection({ userId }) {
           onCreateLabel={createLabel}
           onUpdateLabel={updateLabel}
           onDeleteLabel={deleteLabel}
-          onLaneDragStart={handleDragStart}
-          onLaneDragEnter={handleDragEnter}
-          onLaneDragEnd={handleDragEnd}
+          lifted={liftedLaneId === lane.id}
+          onLaneGripDown={(e) => handleLaneGripDown(e, lane.id)}
+          onCardPointerDown={(e, cardId) => handleCardPointerDown(e, lane.id, cardId)}
         />
       )) : null}
       {boardReady && canCreateDefaultLane ? (

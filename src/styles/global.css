@@ -1986,9 +1986,20 @@ button.account-menu__item:focus-visible {
     inset 0 1px 0 color-mix(in srgb, var(--input-highlight) 82%, transparent);
   overflow: hidden;
 }
-.lane.is-dragging {
-  opacity: 0.45;
+/* Coluna sendo arrastada pelo grip: descola do quadro e flutua acima das
+   vizinhas (o deslocamento X e aplicado pelo GSAP no App.jsx). */
+.lane.is-lifted {
+  position: relative;
+  z-index: 5;
   border-color: var(--accent);
+  box-shadow:
+    var(--modal-shadow),
+    inset 0 1px 0 color-mix(in srgb, var(--input-highlight) 82%, transparent);
+}
+html.is-lane-dragging,
+html.is-lane-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .lane__head {
@@ -2043,7 +2054,7 @@ button.account-menu__item:focus-visible {
   padding: 3px 7px;
   border-radius: 6px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--fg);
@@ -2078,7 +2089,7 @@ button.account-menu__item:focus-visible {
   color: var(--fg);
   font-family: inherit;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -2258,6 +2269,30 @@ button.account-menu__item:focus-visible {
 .kcard.is-dragging {
   opacity: 0.4;
   cursor: grabbing;
+}
+/* Fantasma do arraste de cards (modo Padrao): clone do card no <body> que
+   segue o cursor por cima de tudo; o original fica invisivel no lugar. */
+.kcard.kcard--ghost {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  margin: 0;
+  pointer-events: none;
+  border-color: var(--accent);
+  box-shadow: var(--modal-shadow);
+  will-change: transform;
+}
+html.is-card-dragging,
+html.is-card-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+/* O .kcard tem `transition: transform` (hover). Durante o arraste o GSAP
+   controla o transform: a transicao CSS brigaria com ele e faria o card
+   "quicar" ao soltar. */
+html.is-card-dragging .kcard,
+.kcard.kcard--ghost {
+  transition: none;
 }
 .kcard.has-label-bars {
   padding-right: 30px;

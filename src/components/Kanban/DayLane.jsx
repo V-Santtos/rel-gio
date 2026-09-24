@@ -35,6 +35,7 @@ import {
 } from "./alarms.js";
 import { primeAlarm } from "../../lib/sound.js";
 import { makeClientId } from "../../lib/id.js";
+import { quietArrivals } from "./cardDrag.js";
 
 gsap.registerPlugin(Flip);
 
@@ -234,15 +235,13 @@ export default function DayLane({
   onCreateLabel,
   onUpdateLabel,
   onDeleteLabel,
-  onLaneDragStart,
-  onLaneDragEnter,
-  onLaneDragEnd,
+  lifted = false,
+  onLaneGripDown,
+  onCardPointerDown,
   canDeleteLane = false,
 }) {
   const [cards, setCards] = useState(initialCards);
   const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const [grabbed, setGrabbed] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -288,14 +287,16 @@ export default function DayLane({
     setAlarmSaveToast({ key: `${message}-${Date.now()}`, message });
   };
 
-  useEffect(() => {
+  // Layout effect (nao useEffect): o arraste de cards do modo Padrao aplica a
+  // nova ordem com flushSync e precisa do DOM ja atualizado no mesmo frame.
+  useLayoutEffect(() => {
     setCards((prev) => {
       const prevIds = new Set(prev.map((c) => c.id));
       const arrived = initialCards.find((c) => !prevIds.has(c.id));
       // Card chegou de fora (drag cross-lane ou sync remoto) sem passar pela
       // acao local de criar (que ja marca o proprio pendingPop): dispara o
-      // mesmo "pop" de card novo.
-      if (arrived) pendingPop.current = arrived.id;
+      // mesmo "pop" de card novo. Vindo do arraste do Padrao, ja encaixou.
+      if (arrived && !quietArrivals.delete(arrived.id)) pendingPop.current = arrived.id;
       return initialCards;
     });
   }, [initialCards]);
@@ -736,7 +737,7 @@ export default function DayLane({
         className={`kcard${card.done ? " is-done" : ""}${
           hasLabelBars ? " has-label-bars" : ""
         }${cover.type !== "none" ? ` has-cover has-cover-${cover.type}` : ""}${
-          weekMode && !IS_COARSE_POINTER ? " is-draggable" : ""
+          !IS_COARSE_POINTER ? " is-draggable" : ""
         }${dragId === `card:${card.id}` ? " is-dragging" : ""}`}
         style={
           cover.type === "color"
@@ -746,7 +747,13 @@ export default function DayLane({
         ref={(el) => (cardRefs.current[card.id] = el)}
         role="button"
         tabIndex={0}
+        data-card-id={card.id}
         draggable={weekMode && !IS_COARSE_POINTER}
+        onPointerDown={
+          !weekMode && !IS_COARSE_POINTER
+            ? (e) => onCardPointerDown?.(e, card.id)
+            : undefined
+        }
         onDragStart={(e) => onItemDragStart(e, "card", card.id)}
         onDragEnter={(e) => onItemDragEnter(e, "card", card.id)}
         onDragEnd={onItemDragEnd}
@@ -889,23 +896,10 @@ export default function DayLane({
   return (
     <section
       className={`lane${collapsed ? " is-collapsed" : ""}${
-        dragging ? " is-dragging" : ""
+        lifted ? " is-lifted" : ""
       }`}
       data-lane-id={laneId}
-      draggable={grabbed}
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = "move";
-        if (EMPTY_DRAG_IMAGE) e.dataTransfer.setDragImage(EMPTY_DRAG_IMAGE, 0, 0);
-        setDragging(true);
-        onLaneDragStart?.(laneId);
-      }}
-      onDragEnter={() => onLaneDragEnter?.(laneId)}
       onDragOver={(e) => e.preventDefault()}
-      onDragEnd={() => {
-        setGrabbed(false);
-        setDragging(false);
-        onLaneDragEnd?.();
-      }}
     >
       <header className="lane__head">
         <button
@@ -913,8 +907,7 @@ export default function DayLane({
           className="lane__grip"
           aria-label="Mover coluna"
           tabIndex={-1}
-          onPointerDown={() => setGrabbed(true)}
-          onPointerUp={() => setGrabbed(false)}
+          onPointerDown={onLaneGripDown}
         >
           <GripVertical size={16} strokeWidth={2.2} />
         </button>
