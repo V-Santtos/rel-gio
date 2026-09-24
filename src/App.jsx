@@ -2281,7 +2281,8 @@ function TimerApp({ session, onLogout, entered }) {
           1,
           c.focusHours * 3600 + c.focusMinutes * 60 + c.focusSeconds
         ),
-        break: Math.max(1, c.breakMinutes * 60 + c.breakSeconds),
+        // 0 = sem break (o useTimer pula a pausa); nao forcar 1s aqui.
+        break: Math.max(0, c.breakMinutes * 60 + c.breakSeconds),
       })),
     [config.cycleTimes]
   );
@@ -2392,6 +2393,9 @@ function TimerApp({ session, onLogout, entered }) {
   // audio nao basta: ao voltar para o ciclo 1, o efeito de virada o iniciaria
   // de novo porque `musicOn` ainda estaria ligado.
   const handleSessionEnd = useCallback(() => {
+    // Fim da sessao: sai da tela cheia e volta ao estado padrao do Foco (e la
+    // que aparece o feedback de "Tarefa concluida").
+    setExpanded(false);
     if (focusTaskRef.current) completeFocusTaskRef.current(focusTaskRef.current);
     stopMusic();
     setMusicOn(false);

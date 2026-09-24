@@ -45,6 +45,7 @@ function restoreTimerState(plan) {
  * - Sessao = roda cada ciclo [Foco -> Break], encadeando automaticamente.
  *   O Break do ULTIMO ciclo e PULADO (termina no fim do ultimo Foco).
  *   Excecao: com 1 ciclo, mantem Foco -> Break (rodada unica classica).
+ *   Break configurado como 0 e sempre pulado.
  * - Reiniciar (reset) volta a sessao inteira para o Foco do ciclo 1.
  * - Tick usa Date.now() como ancora: imune a throttling de background.
  * - Estado persiste em localStorage; restaura na proxima abertura.
@@ -145,21 +146,46 @@ export function useTimer({ plan, onPhaseEnd, onSessionEnd }) {
     if (!running || remaining !== 0) return;
 
     if (mode === "focus") {
-      const needBreak = cycle < totalCycles || totalCycles === 1;
-      onPhaseEnd?.(mode, {
-        cycle,
-        cycles: totalCycles,
-        nextMode: needBreak ? "break" : "focus",
-        nextCycle: cycle,
-        willContinue: needBreak,
-      });
+      // Break configurado como 0 = sem pausa: pula direto para o proximo foco
+      // (ou encerra, se era o ultimo ciclo), sem aquele "break de 1s".
+      const hasBreak = (plan[cycle - 1]?.break ?? 0) > 0;
+      const needBreak = hasBreak && (cycle < totalCycles || totalCycles === 1);
       if (needBreak) {
+        onPhaseEnd?.(mode, {
+          cycle,
+          cycles: totalCycles,
+          nextMode: "break",
+          nextCycle: cycle,
+          willContinue: true,
+        });
         const newRem = durationFor("break", cycle - 1);
         resetAnchor(newRem);
         setMode("break");
         setRemaining(newRem);
         return;
       }
+      if (cycle < totalCycles) {
+        const next = cycle + 1;
+        onPhaseEnd?.(mode, {
+          cycle,
+          cycles: totalCycles,
+          nextMode: "focus",
+          nextCycle: next,
+          willContinue: true,
+        });
+        const newRem = durationFor("focus", next - 1);
+        resetAnchor(newRem);
+        setCycle(next);
+        setRemaining(newRem);
+        return;
+      }
+      onPhaseEnd?.(mode, {
+        cycle,
+        cycles: totalCycles,
+        nextMode: "focus",
+        nextCycle: 1,
+        willContinue: false,
+      });
       endSession();
       return;
     }
