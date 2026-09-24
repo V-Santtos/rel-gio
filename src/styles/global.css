@@ -7444,6 +7444,20 @@ html.is-card-dragging .kcard,
   line-height: 1;
   /* Sem transition de opacity/box-shadow: quem anima o selo e o GSAP. */
 }
+.focus-task__chip {
+  position: relative;
+}
+/* Camada de brilho difuso: sombra FIXA; o GSAP so pulsa a opacidade dela
+   (compositor), em vez de animar box-shadow a cada frame. */
+.focus-task__glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 26px 2px rgba(231, 111, 81, 0.14);
+  opacity: 0.25;
+  pointer-events: none;
+  will-change: opacity;
+}
 /* Tarefa vinculada: anel levemente terracota (o pulso e o GSAP). */
 .focus-task__chip.is-linked {
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
