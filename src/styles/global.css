@@ -6,6 +6,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Canto unico de botoes e campos (padrao validado, estilo Trello). */
+  --radius-control: 8px;
   /* Tema claro (padrao) — base da referencia */
   --bg: #eceef1;
   --fg: #20232a;
@@ -661,7 +663,7 @@ button.account-menu__item:focus-visible {
   height: 24px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: currentColor;
   font: inherit;
@@ -974,7 +976,7 @@ button.account-menu__item:focus-visible {
   height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -2025,7 +2027,7 @@ html.is-lane-dragging * {
   height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -2052,7 +2054,7 @@ html.is-lane-dragging * {
   min-width: 0;
   margin: 0;
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.07em;
@@ -2083,8 +2085,8 @@ html.is-lane-dragging * {
   min-width: 0;
   margin: 0;
   padding: 3px 7px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
+  border: 1px solid var(--field-border-focus);
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
@@ -2191,7 +2193,7 @@ html.is-lane-dragging * {
   flex: none;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -2533,7 +2535,7 @@ html.is-card-dragging .kcard,
   width: 100%;
   padding: 9px 10px;
   border: 1px dashed color-mix(in srgb, var(--border) 88%, var(--input-highlight));
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--field-bg) 32%, transparent);
   color: var(--muted);
   font-family: inherit;
@@ -2559,7 +2561,7 @@ html.is-card-dragging .kcard,
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--kcard-border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--kcard-bg);
   box-shadow: var(--kcard-shadow);
   color: var(--fg);
@@ -2571,8 +2573,8 @@ html.is-card-dragging .kcard,
   color: var(--muted);
 }
 .lane__input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--field-border-focus);
 }
 .lane__composer-actions {
   display: flex;
@@ -2584,7 +2586,7 @@ html.is-card-dragging .kcard,
   /* A ação confirma o compositor, então usa o mesmo peso do foco do campo,
      mas vazada: destaque sem criar um segundo bloco vermelho. */
   border: 2px solid color-mix(in srgb, var(--field-border) 88%, var(--input-highlight));
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
@@ -2609,7 +2611,7 @@ html.is-card-dragging .kcard,
   height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -2723,7 +2725,7 @@ html.is-card-dragging .kcard,
   margin: 0;
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--fg) 6%, transparent);
   color: var(--fg);
   font-weight: 500;
@@ -2841,7 +2843,7 @@ html.is-card-dragging .kcard,
   border-radius: 8px;
   font-family: inherit;
   font-size: 12.5px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
 }
 @media (hover: hover) {
@@ -2948,12 +2950,12 @@ html.is-card-dragging .kcard,
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   text-transform: uppercase;
 }
 .paintpop__hex:focus,
@@ -2969,7 +2971,7 @@ html.is-card-dragging .kcard,
   height: 34px;
   padding: 0 12px;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font-family: inherit;
@@ -2979,7 +2981,7 @@ html.is-card-dragging .kcard,
 }
 @media (hover: hover) {
   .paintpop__apply:not(:disabled):hover {
-    border-color: var(--accent);
+    border-color: var(--field-border-focus);
   }
 }
 .paintpop__apply:disabled {
@@ -3003,7 +3005,7 @@ html.is-card-dragging .kcard,
   height: 32px;
   padding: 0;
   border: 2px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   color: #fff;
   cursor: pointer;
 }
@@ -3025,7 +3027,7 @@ html.is-card-dragging .kcard,
   padding: 0;
   overflow: hidden;
   border: 2px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--lane-bg);
   cursor: pointer;
 }
@@ -3052,7 +3054,7 @@ html.is-card-dragging .kcard,
   color: var(--fg);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
 }
 .coverpop__upload:disabled {
@@ -3062,7 +3064,7 @@ html.is-card-dragging .kcard,
 @media (hover: hover) {
   .coverpop__upload:not(:disabled):hover,
   .coverpop__remove:hover {
-    border-color: var(--accent);
+    border-color: var(--field-border-focus);
   }
 }
 .coverpop__error {
@@ -3190,7 +3192,7 @@ html.is-card-dragging .kcard,
   margin-right: -6px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -3216,7 +3218,7 @@ html.is-card-dragging .kcard,
   margin: 0;
   padding: 6px 9px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: transparent;
   resize: none;
   overflow: hidden;
@@ -3235,7 +3237,7 @@ html.is-card-dragging .kcard,
 .cardmodal__title:focus {
   outline: none;
   background: var(--field-bg);
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 
 .cardmodal__section {
@@ -3266,12 +3268,12 @@ html.is-card-dragging .kcard,
   margin-left: auto;
   padding: 5px 8px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
 }
 @media (hover: hover) {
@@ -3314,7 +3316,7 @@ html.is-card-dragging .kcard,
   transition: border-color 0.15s ease;
 }@media (hover: hover) {
 .cardmodal__desc-empty:hover {
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }}
 
 /* Checklist no modal */
@@ -3352,11 +3354,11 @@ html.is-card-dragging .kcard,
   color: var(--fg);
   font-family: inherit;
   font-size: 13.5px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }@media (hover: hover) {
 .checklist__delete:hover {
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
   background: var(--hover);
 }}
 .checklist__progress {
@@ -3417,7 +3419,7 @@ html.is-card-dragging .kcard,
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -3440,7 +3442,7 @@ html.is-card-dragging .kcard,
   cursor: pointer;
 }@media (hover: hover) {
 .checklist__add-placeholder:hover {
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
   color: var(--fg);
 }}
 .checklist__composer {
@@ -3479,7 +3481,7 @@ html.is-card-dragging .kcard,
   color: var(--btn-neutral-fg);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }@media (hover: hover) {
@@ -3597,7 +3599,7 @@ html.is-card-dragging .kcard,
   height: 32px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font-family: inherit;
@@ -3849,7 +3851,7 @@ html.is-card-dragging .kcard,
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   cursor: pointer;
@@ -3999,22 +4001,127 @@ html.is-card-dragging .kcard,
   font-size: 12.5px;
   font-weight: 700;
 }
-/* Imagens na descricao (editor e leitura) */
+/* Imagens na descricao (editor e leitura), no padrao Trello/Linear/Notion:
+   a caixa (.md-imgbox) define a LARGURA pelo tamanho escolhido
+   (Pequena 40% / Media 70% / Inteira 100% do texto); a imagem ocupa essa
+   largura, com teto de altura e proporcao preservada. Respiro acima e
+   abaixo para o texto nao "grudar". Leitura: clicar abre o visualizador. */
+.md-imgbox {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.9em 0;
+}
+.md-imgbox[data-size="small"] {
+  max-width: 40%;
+}
+.md-imgbox[data-size="medium"] {
+  max-width: 70%;
+}
 .md-img,
 .mde__image .attimg {
   display: block;
+  width: auto;
   max-width: 100%;
-  max-height: 360px;
-  margin: 0.6em 0;
-  border-radius: 8px;
+  max-height: 420px;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  border-radius: var(--radius-control);
   object-fit: contain;
 }
-.mde__image {
-  margin: 0.6em 0;
+.md-img-zoom {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: zoom-in;
 }
-.mde__image .md-img,
-.mde__image .attimg {
+.md-img-zoom .md-img {
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.md-img-zoom__icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  background: rgba(16, 16, 16, 0.62);
+  color: #f4f5f7;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .md-img-zoom:hover .md-img {
+    filter: brightness(1.05);
+    border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+  }
+  .md-img-zoom:hover .md-img-zoom__icon {
+    opacity: 1;
+  }
+}
+.md-img-zoom:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.md-img-zoom:focus-visible .md-img-zoom__icon {
+  opacity: 1;
+}
+/* Editor: a imagem fica numa caixa com a barrinha de tamanho no hover. */
+.mde__image {
+  /* Largura cheia do texto: os % de tamanho da imagem sao relativos a ela. */
+  position: relative;
+  margin: 0.9em 0;
+}
+.mde__image .md-imgbox {
   margin: 0;
+}
+.mde__imgsize {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: rgba(16, 16, 16, 0.72);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.mde__image:hover .mde__imgsize,
+.mde__image.is-selected .mde__imgsize,
+.mde__imgsize:focus-within {
+  opacity: 1;
+}
+.mde__imgsize-opt {
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(244, 245, 247, 0.75);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mde__imgsize-opt.is-active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #f4f5f7;
+}
+@media (hover: hover) {
+  .mde__imgsize-opt:not(.is-active):hover {
+    color: #f4f5f7;
+  }
+}
+.mde__imgsize-opt:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 .mde__image.is-selected .attimg,
 .mde__image.is-selected .md-img {
@@ -4022,8 +4129,8 @@ html.is-card-dragging .kcard,
   outline-offset: 2px;
 }
 .md-img.attimg--placeholder {
-  width: 100%;
-  height: 140px;
+  width: min(280px, 100%);
+  height: 160px;
 }
 .md-img--missing {
   display: inline-flex;
@@ -4055,7 +4162,7 @@ html.is-card-dragging .kcard,
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
@@ -4064,7 +4171,7 @@ html.is-card-dragging .kcard,
 }
 .mdedlg__field input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 .mdedlg__field input[aria-invalid="true"] {
   border-color: var(--accent);
@@ -4087,7 +4194,7 @@ html.is-card-dragging .kcard,
   border-radius: 8px;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
 }
 .mdedlg__submit {
@@ -4360,7 +4467,7 @@ html.is-card-dragging .kcard,
   height: 32px;
   padding: 0 10px;
   border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font-family: inherit;
@@ -4440,7 +4547,7 @@ html.is-card-dragging .kcard,
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -4534,7 +4641,7 @@ html.is-card-dragging .kcard,
   height: 36px;
   padding: 0 9px;
   border: 1px solid color-mix(in srgb, var(--fg) 26%, transparent);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font-family: inherit;
@@ -4550,7 +4657,7 @@ html.is-card-dragging .kcard,
 .datespop__input.is-focus,
 .datespop__input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 /* Popover de lembrete do cartao (Modo Semana): reaproveita o HH:MM dos
    alarmes e os botoes do popover de datas. */
@@ -4588,7 +4695,7 @@ html.is-card-dragging .kcard,
   gap: 4px;
   padding: 3px;
   border: 1px solid var(--field-border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
 }
 .reminderpop__opt,
@@ -4650,7 +4757,7 @@ html.is-card-dragging .kcard,
 .datespop__remove {
   width: 100%;
   height: 36px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -4765,7 +4872,7 @@ html.is-card-dragging .kcard,
 .cardmodal .checklist__add-placeholder,
 .cardmodal .checklist__cancel {
   border-color: color-mix(in srgb, var(--fg) 22%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   font-weight: 500;
 }
@@ -4780,17 +4887,17 @@ html.is-card-dragging .kcard,
 }
 .cardmodal .checklist__input {
   border-color: color-mix(in srgb, var(--fg) 26%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   box-shadow: none;
 }
 .cardmodal .checklist__input:focus {
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
   box-shadow: none;
 }
 .cardmodal .checklist__add {
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
   font-weight: 500;
@@ -4810,7 +4917,7 @@ html.is-card-dragging .kcard,
 .kpop .coverpop__upload,
 .kpop .coverpop__remove {
   border-color: color-mix(in srgb, var(--fg) 22%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   font-weight: 500;
 }
@@ -5084,7 +5191,7 @@ html.is-card-dragging .kcard,
   gap: 7px;
   padding: 8px 16px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
   font-family: inherit;
@@ -5123,7 +5230,7 @@ html.is-card-dragging .kcard,
   gap: 7px;
   padding: 8px 14px;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
@@ -5155,7 +5262,7 @@ html.is-card-dragging .kcard,
   gap: 7px;
   padding: 8px 13px;
   border: 1px solid var(--field-border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
@@ -5275,7 +5382,7 @@ html.is-card-dragging .kcard,
   height: 34px;
   padding: 0;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--muted);
   cursor: pointer;
@@ -5285,7 +5392,7 @@ html.is-card-dragging .kcard,
 .cardmodal__label-add:hover {
   background: var(--hover);
   color: var(--fg);
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }}
 
 /* ===== Popover (etiquetas, e futuros menus) ===== */
@@ -5380,15 +5487,15 @@ html.is-card-dragging .kcard,
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--accent);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
   font-size: 13.5px;
 }
 .kpop__search:focus {
-  outline: 2px solid rgba(231, 111, 81, 0.28);
-  outline-offset: 0;
+  outline: none;
+  border-color: var(--field-border-focus);
 }
 .kpop__section-label {
   color: var(--muted);
@@ -5469,7 +5576,7 @@ html.is-card-dragging .kcard,
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -5486,7 +5593,7 @@ html.is-card-dragging .kcard,
   height: 34px;
   width: 100%;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font-family: inherit;
@@ -5496,7 +5603,7 @@ html.is-card-dragging .kcard,
 }@media (hover: hover) {
 .kpop__create-label:hover {
   background: var(--hover);
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }}
 
 /* Lista do popover de Etiquetas (referencia Trello): barra solida com o nome
@@ -5504,12 +5611,12 @@ html.is-card-dragging .kcard,
 .kpop--labels .kpop__search {
   height: 36px;
   border-color: color-mix(in srgb, var(--fg) 26%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
 }
 .kpop--labels .kpop__search:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 .kpop--labels .kpop__labels {
   gap: 6px;
@@ -5543,7 +5650,7 @@ html.is-card-dragging .kcard,
   height: 36px;
   margin-top: 4px;
   border-color: color-mix(in srgb, var(--fg) 22%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-weight: 500;
 }
 
@@ -5557,7 +5664,7 @@ html.is-card-dragging .kcard,
   height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -5648,7 +5755,7 @@ html.is-card-dragging .kcard,
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -5692,7 +5799,7 @@ html.is-card-dragging .kcard,
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
@@ -5700,7 +5807,7 @@ html.is-card-dragging .kcard,
 }
 .alarm-form__desc:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 /* Horario em dois segmentos HH:MM (sem o input nativo do SO). */
 .alarm-time {
@@ -5713,7 +5820,7 @@ html.is-card-dragging .kcard,
   height: 42px;
   padding: 0;
   border: 1px solid var(--field-border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
@@ -5730,8 +5837,8 @@ html.is-card-dragging .kcard,
 }
 .alarm-time__seg:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(231, 111, 81, 0.18);
+  border-color: var(--field-border-focus);
+  box-shadow: none;
 }
 .alarm-time__colon {
   font-size: 19px;
@@ -5757,7 +5864,7 @@ html.is-card-dragging .kcard,
   flex: none;
   padding: 0;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -5782,7 +5889,7 @@ html.is-card-dragging .kcard,
   width: 100%;
   height: 36px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
   font-family: inherit;
@@ -5969,7 +6076,7 @@ html.is-card-dragging .kcard,
   width: 100%;
   height: 34px;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--field-bg);
   color: var(--fg);
   font-family: inherit;
@@ -5977,7 +6084,7 @@ html.is-card-dragging .kcard,
 }
 .label-form__field input:focus {
   outline: 2px solid rgba(231, 111, 81, 0.28);
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 .label-form__colors {
   display: grid;
@@ -6016,7 +6123,7 @@ html.is-card-dragging .kcard,
   background: var(--field-bg);
   color: var(--muted);
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 600;
 }
 .label-form__color-picker {
   cursor: pointer;
@@ -6055,7 +6162,7 @@ html.is-card-dragging .kcard,
   width: 100%;
   height: 34px;
   border: 1px solid var(--field-border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
@@ -6081,12 +6188,12 @@ html.is-card-dragging .kcard,
   height: 34px;
   padding: 0 14px;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--btn-neutral);
   color: var(--btn-neutral-fg);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }@media (hover: hover) {
@@ -6119,13 +6226,13 @@ html.is-card-dragging .kcard,
 .kpop .label-form__hex,
 .kpop .label-form__remove {
   border-color: color-mix(in srgb, var(--fg) 26%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   box-shadow: none;
 }
 .kpop .label-form__field input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--field-border-focus);
 }
 .kpop .label-form__remove--full {
   width: 100%;
@@ -6136,7 +6243,7 @@ html.is-card-dragging .kcard,
   height: 34px;
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--accent);
   font-family: inherit;
@@ -6176,7 +6283,7 @@ html.is-card-dragging .kcard,
   position: relative;
   height: 164px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.58);
   cursor: crosshair;
   overflow: hidden;
@@ -6298,7 +6405,7 @@ html.is-card-dragging .kcard,
 @media (hover: hover) {
 .label-form__color-picker:hover,
 .label-color-picker__cancel:hover,
-.label-color-picker__eyedropper:hover { border-color: var(--accent); color: var(--fg); }
+.label-color-picker__eyedropper:hover { border-color: var(--field-border-focus); color: var(--fg); }
 .label-color-picker__apply:hover { filter: brightness(1.06); }
 }
 
@@ -6850,7 +6957,7 @@ html.is-card-dragging .kcard,
   flex: none;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -7568,3 +7675,167 @@ html.is-card-dragging .kcard,
   display: none;
 }
 
+
+/* ===== Visualizador de imagens (lightbox) ================================ */
+:root {
+  --viewer-scrim: rgba(8, 8, 10, 0.9);
+}
+.imgview {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  background: var(--viewer-scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  color: #f4f5f7;
+}
+.imgview__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px 10px 20px;
+}
+.imgview__info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.imgview__name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.imgview__meta {
+  color: rgba(244, 245, 247, 0.6);
+  font-size: 12px;
+}
+.imgview__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+.imgview__btn,
+.imgview__icon,
+.imgview__nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f4f5f7;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.imgview__btn {
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.imgview__btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.imgview__icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-control);
+}
+@media (hover: hover) {
+  .imgview__btn:not(:disabled):hover,
+  .imgview__icon:hover,
+  .imgview__nav:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+.imgview__btn:focus-visible,
+.imgview__icon:focus-visible,
+.imgview__nav:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.imgview__stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 72px 44px;
+}
+.imgview__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-control);
+  object-fit: contain;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+  user-select: none;
+}
+.imgview__img.attimg--placeholder {
+  width: min(480px, 80vw);
+  height: min(320px, 50vh);
+  background: rgba(255, 255, 255, 0.05);
+}
+.imgview__nav {
+  position: absolute;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  translate: 0 -50%;
+}
+.imgview__nav--prev {
+  left: 16px;
+}
+.imgview__nav--next {
+  right: 16px;
+}
+.imgview__count {
+  position: absolute;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  margin: 0;
+  color: rgba(244, 245, 247, 0.6);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  translate: -50% 0;
+}
+@media (max-width: 640px) {
+  .imgview__stage {
+    padding: 4px 12px 52px;
+  }
+  .imgview__btn span {
+    display: none;
+  }
+  .imgview__btn {
+    width: 34px;
+    padding: 0;
+  }
+  .imgview__nav {
+    top: auto;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    width: 38px;
+    height: 38px;
+    translate: none;
+  }
+  .imgview__nav--prev {
+    left: 12px;
+  }
+  .imgview__nav--next {
+    right: 12px;
+  }
+}
