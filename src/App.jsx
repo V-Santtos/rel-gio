@@ -26,7 +26,7 @@ import {
   NavTaskIcon,
 } from "./components/NavIcons.jsx";
 import DayLane from "./components/Kanban/DayLane.jsx";
-import { FocusFinishPrompt, FocusTaskBar } from "./components/FocusTask.jsx";
+import { FocusTaskBar } from "./components/FocusTask.jsx";
 import { quietArrivals } from "./components/Kanban/cardDrag.js";
 import {
   DEFAULT_LABELS,
@@ -290,7 +290,9 @@ function FocoSection({
   musicVolume,
   onMusicVolume,
   focusTask,
+  completedTask,
   onUnlinkTask,
+  onCompletedShown,
 }) {
   const { running, start, pause, reset } = timer;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -386,7 +388,12 @@ function FocoSection({
         />
       </div>
 
-      <FocusTaskBar task={focusTask} onUnlink={onUnlinkTask} />
+      <FocusTaskBar
+        task={focusTask}
+        completed={completedTask}
+        onUnlink={onUnlinkTask}
+        onCompletedShown={onCompletedShown}
+      />
 
       <div id="notif-guide-anchor" className="focus-actions" ref={actionsRef}>
         <div className="controls">
@@ -2303,8 +2310,9 @@ function TimerApp({ session, onLogout, entered }) {
   const [focusTask, setFocusTask] = useState(null);
   const focusTaskRef = useRef(null);
   focusTaskRef.current = focusTask;
-  const sessionCyclesRef = useRef(0);
-  const [finishPrompt, setFinishPrompt] = useState(null);
+  // Tarefa recem-concluida pelo fim da sessao: o selo do Foco mostra a
+  // animacao "Tarefa concluida" e depois limpa.
+  const [completedTask, setCompletedTask] = useState(null);
 
   useEffect(() => {
     try {
@@ -2317,7 +2325,6 @@ function TimerApp({ session, onLogout, entered }) {
   const linkFocusTask = useCallback(
     (task) => {
       setFocusTask(task);
-      sessionCyclesRef.current = 0;
       try {
         if (task) localStorage.setItem(focusTaskKey, JSON.stringify(task));
         else localStorage.removeItem(focusTaskKey);
@@ -2357,17 +2364,16 @@ function TimerApp({ session, onLogout, entered }) {
     (mode, transition) => {
       playPhaseEnd(mode, transition);
       if (mode !== "focus" || !focusTaskRef.current) return;
-      sessionCyclesRef.current += 1;
       bumpFocusCycles(focusTaskRef.current.id);
     },
     [bumpFocusCycles]
   );
 
-  const completeFocusTask = () => {
-    const task = finishPrompt?.task;
-    setFinishPrompt(null);
-    if (!task) return;
+  // Fim da sessao com tarefa vinculada: o ciclo ja fazia parte da tarefa,
+  // entao ela e concluida automaticamente (banco + board) e o vinculo sai.
+  const completeFocusTask = (task) => {
     linkFocusTask(null);
+    setCompletedTask({ ...task, key: Date.now() });
     window.dispatchEvent(new CustomEvent("fluxtime:task-done", { detail: { cardId: task.id } }));
     if (supabase && userId) {
       supabase
@@ -2379,16 +2385,14 @@ function TimerApp({ session, onLogout, entered }) {
         });
     }
   };
+  const completeFocusTaskRef = useRef(completeFocusTask);
+  completeFocusTaskRef.current = completeFocusTask;
 
   // Encerrar a sessao tambem desliga a intencao de tocar musica. So parar o
   // audio nao basta: ao voltar para o ciclo 1, o efeito de virada o iniciaria
   // de novo porque `musicOn` ainda estaria ligado.
   const handleSessionEnd = useCallback(() => {
-    // Sessao com tarefa vinculada terminou: oferece concluir o cartao.
-    if (focusTaskRef.current) {
-      setFinishPrompt({ task: focusTaskRef.current, cycles: sessionCyclesRef.current });
-    }
-    sessionCyclesRef.current = 0;
+    if (focusTaskRef.current) completeFocusTaskRef.current(focusTaskRef.current);
     stopMusic();
     setMusicOn(false);
     try {
@@ -2730,7 +2734,9 @@ function TimerApp({ session, onLogout, entered }) {
               musicVolume={musicVolume}
               onMusicVolume={changeMusicVolume}
               focusTask={focusTask}
+              completedTask={completedTask}
               onUnlinkTask={() => linkFocusTask(null)}
+              onCompletedShown={() => setCompletedTask(null)}
             />
           ) : null
         ) : section === "cronometro" ? (
@@ -2789,14 +2795,6 @@ function TimerApp({ session, onLogout, entered }) {
     {notifGuideVisible && (
       <NotifGuide onDismiss={dismissNotifGuide} />
     )}
-    {finishPrompt ? (
-      <FocusFinishPrompt
-        task={finishPrompt.task}
-        cycles={finishPrompt.cycles}
-        onComplete={completeFocusTask}
-        onDismiss={() => setFinishPrompt(null)}
-      />
-    ) : null}
     </>
   );
 }

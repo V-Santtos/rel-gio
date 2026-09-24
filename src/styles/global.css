@@ -7425,6 +7425,7 @@ html.is-card-dragging .kcard,
   justify-content: center;
   margin: 2px 0 16px;
   padding: 0 16px;
+  transition: opacity 0.4s ease;
 }
 /* Selo neutro, no mesmo idioma dos botoes ghost do Foco: sem fundo colorido,
    borda sutil e rotulo em caixa alta como as legendas do relogio. */
@@ -7441,7 +7442,37 @@ html.is-card-dragging .kcard,
   color: var(--fg);
   font-size: 13.5px;
   line-height: 1;
-  transition: opacity 0.4s ease, border-color 0.4s ease;
+  /* Sem transition de opacity/box-shadow: quem anima o selo e o GSAP. */
+}
+/* Tarefa vinculada: anel levemente terracota (o pulso e o GSAP). */
+.focus-task__chip.is-linked {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.focus-task__chip.is-linked .focus-task__icon {
+  color: color-mix(in srgb, var(--accent) 80%, var(--muted));
+}
+/* Feedback de tarefa concluida no fim da sessao. */
+.focus-task__chip.is-done {
+  padding-right: 14px;
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.focus-task__chip.is-done .focus-task__label {
+  color: var(--fg);
+}
+.focus-task__chip.is-done .focus-task__title {
+  color: var(--muted);
+  font-weight: 500;
+}
+.focus-task__check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
 }
 .focus-task__icon {
   flex: 0 0 auto;
@@ -7495,9 +7526,8 @@ html.is-card-dragging .kcard,
 }
 /* Modo foco: o contexto (qual tarefa) continua visivel, mas discreto; o X so
    volta junto dos controles, no movimento do mouse. */
-.app.is-running:not(.is-revealed) .focus-task__chip {
+.app.is-running:not(.is-revealed) .focus-task {
   opacity: 0.6;
-  border-color: transparent;
 }
 .app.is-running:not(.is-revealed) .focus-task__remove {
   opacity: 0;
@@ -7505,92 +7535,6 @@ html.is-card-dragging .kcard,
 }
 .app.is-expanded .focus-task {
   display: none;
-}
-
-/* Fim da sessao com tarefa vinculada */
-.focus-finish {
-  position: fixed;
-  left: 50%;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  z-index: 60;
-  display: flex;
-  gap: 12px;
-  width: min(380px, calc(100vw - 32px));
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--lane-bg);
-  box-shadow: var(--modal-shadow);
-  color: var(--fg);
-  translate: -50% 0;
-}
-.focus-finish__icon {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-}
-.focus-finish__body {
-  min-width: 0;
-  flex: 1;
-}
-.focus-finish__title {
-  margin: 0 0 3px;
-  font-size: 14px;
-  font-weight: 700;
-}
-.focus-finish__text {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.focus-finish__text strong {
-  color: var(--fg);
-  font-weight: 600;
-}
-.focus-finish__actions {
-  display: flex;
-  gap: 8px;
-}
-.focus-finish__done,
-.focus-finish__later {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.focus-finish__done {
-  border: 0;
-  background: var(--accent);
-  color: #fff;
-}
-.focus-finish__later {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--fg);
-}
-@media (hover: hover) {
-  .focus-finish__later:hover {
-    background: var(--hover);
-  }
-}
-.focus-finish__done:focus-visible,
-.focus-finish__later:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* Selo de ciclos de foco no cartao */
