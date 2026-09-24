@@ -290,9 +290,7 @@ function FocoSection({
   musicVolume,
   onMusicVolume,
   focusTask,
-  onLinkTask,
   onUnlinkTask,
-  userId,
 }) {
   const { running, start, pause, reset } = timer;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -388,13 +386,7 @@ function FocoSection({
         />
       </div>
 
-      <FocusTaskBar
-        task={focusTask}
-        running={running}
-        userId={userId}
-        onPick={onLinkTask}
-        onUnlink={onUnlinkTask}
-      />
+      <FocusTaskBar task={focusTask} onUnlink={onUnlinkTask} />
 
       <div id="notif-guide-anchor" className="focus-actions" ref={actionsRef}>
         <div className="controls">
@@ -2738,9 +2730,7 @@ function TimerApp({ session, onLogout, entered }) {
               musicVolume={musicVolume}
               onMusicVolume={changeMusicVolume}
               focusTask={focusTask}
-              onLinkTask={linkFocusTask}
               onUnlinkTask={() => linkFocusTask(null)}
-              userId={userId}
             />
           ) : null
         ) : section === "cronometro" ? (
