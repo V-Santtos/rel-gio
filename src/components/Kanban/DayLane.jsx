@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Bell,
   Repeat,
+  Timer as TimerIcon,
   Trash2,
   Sunrise,
   Sun,
@@ -241,6 +242,7 @@ export default function DayLane({
   lifted = false,
   onLaneGripDown,
   onCardPointerDown,
+  onFocusCard,
   canDeleteLane = false,
 }) {
   const [cards, setCards] = useState(initialCards);
@@ -707,6 +709,15 @@ export default function DayLane({
     // dentro da imagem (junto do titulo), sem faixa escura cortando a foto.
     const badges = (
       <>
+        {card.focusCycles > 0 ? (
+          <span
+            className="duebadge duebadge--focus"
+            title={`${card.focusCycles} ${card.focusCycles === 1 ? "ciclo" : "ciclos"} de foco`}
+          >
+            <TimerIcon size={13} strokeWidth={2.3} aria-hidden="true" />
+            {card.focusCycles}
+          </span>
+        ) : null}
         {weekMode && card.reminderTime ? (
           <span
             className="duebadge duebadge--reminder"
@@ -1164,6 +1175,7 @@ export default function DayLane({
           card={selectedCard}
           day={name}
           dayKey={dayKey}
+          onFocus={onFocusCard}
           weekMode={weekMode}
           labelCatalog={labelCatalog}
           attachmentsApi={attachmentsApi}

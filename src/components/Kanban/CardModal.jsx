@@ -14,6 +14,7 @@ import {
   Moon,
   SunMoon,
   Bell,
+  Play,
   Check,
   Paperclip,
   Image as ImageIcon,
@@ -112,6 +113,7 @@ export default function CardModal({
   onChange,
   onDelete,
   onArchive,
+  onFocus,
   onClose,
 }) {
   const backdropRef = useRef(null);
@@ -132,6 +134,8 @@ export default function CardModal({
   const [menuFromBar, setMenuFromBar] = useState(false);
   const attachInputRef = useRef(null);
   const closingRef = useRef(false);
+  // Acao a executar depois da animacao de fechar (ex.: "Focar" -> aba Foco).
+  const afterCloseRef = useRef(null);
   const coverDragRef = useRef(null);
 
   // Modelo rascunho->commit: tudo edita um draft local; X/Esc/clique-fora
@@ -537,8 +541,20 @@ export default function CardModal({
       opacity: 0,
       duration: r ? 0 : sheet ? 0.3 : 0.22,
       ease: "power2.in",
-      onComplete: onClose,
+      onComplete: () => {
+        onClose();
+        afterCloseRef.current?.();
+      },
     });
+  };
+
+  // "Focar": salva o que foi editado (se o cartao esta valido), fecha o modal
+  // e so entao leva para o Foco com o cartao vinculado.
+  const handleFocus = () => {
+    if (!weekMode || draft.period) onChange(draft);
+    const task = { id: draft.id, title: draft.title || "" };
+    afterCloseRef.current = () => onFocus?.(task);
+    close();
   };
 
   // Salvar comita o draft. Em Modo Semana o periodo e obrigatorio: sem ele,
@@ -846,6 +862,17 @@ export default function CardModal({
             >
               <Bell size={16} strokeWidth={2.2} />
               <span>{draft.reminderTime ? `Lembrete · ${draft.reminderTime}` : "Lembrete"}</span>
+            </button>
+          ) : null}
+          {weekMode && onFocus ? (
+            <button
+              type="button"
+              className="cardmodal__action cardmodal__action--focus"
+              onClick={handleFocus}
+              title="Iniciar um ciclo de foco vinculado a esta tarefa"
+            >
+              <Play size={16} strokeWidth={2.2} />
+              <span>Focar</span>
             </button>
           ) : null}
         </div>

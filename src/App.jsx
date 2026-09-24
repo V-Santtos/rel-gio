@@ -26,6 +26,7 @@ import {
   NavTaskIcon,
 } from "./components/NavIcons.jsx";
 import DayLane from "./components/Kanban/DayLane.jsx";
+import { FocusFinishPrompt, FocusTaskBar } from "./components/FocusTask.jsx";
 import { quietArrivals } from "./components/Kanban/cardDrag.js";
 import {
   DEFAULT_LABELS,
@@ -288,6 +289,10 @@ function FocoSection({
   onToggleMusicOn,
   musicVolume,
   onMusicVolume,
+  focusTask,
+  onLinkTask,
+  onUnlinkTask,
+  userId,
 }) {
   const { running, start, pause, reset } = timer;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -382,6 +387,14 @@ function FocoSection({
           clockRef={clockRef}
         />
       </div>
+
+      <FocusTaskBar
+        task={focusTask}
+        running={running}
+        userId={userId}
+        onPick={onLinkTask}
+        onUnlink={onUnlinkTask}
+      />
 
       <div id="notif-guide-anchor" className="focus-actions" ref={actionsRef}>
         <div className="controls">
@@ -584,7 +597,7 @@ const cleanChecklist = (list, index = 0) => ({
   })),
 });
 
-function TarefasSection({ userId }) {
+function TarefasSection({ userId, onFocusTask }) {
   const boardRef = useRef(null);
   const [lanes, setLanes] = useState(fallbackLanes);
   const [labels, setLabels] = useState([]);
@@ -628,29 +641,37 @@ function TarefasSection({ userId }) {
     );
   }, [lanes, boardReady, userId]);
 
-  // Lembrete "uma vez" que ja tocou (verificador global): tira do estado.
-  // O banco ja foi atualizado por quem disparou.
+  // Atualizacoes vindas de fora do board (o banco ja foi gravado por quem
+  // disparou): lembrete "uma vez" que tocou, ciclo de foco concluido numa
+  // tarefa vinculada e tarefa concluida pelo aviso de fim de sessao.
   useEffect(() => {
-    const onDone = (event) => {
-      const cardId = event.detail?.cardId;
-      if (!cardId) return;
+    const patchCard = (cardId, patch) =>
       setLanes((list) =>
         list.map((lane) =>
           lane.cards.some((card) => card.id === cardId)
             ? {
                 ...lane,
                 cards: lane.cards.map((card) =>
-                  card.id === cardId
-                    ? { ...card, reminderTime: null, reminderRepeat: null, reminderDays: [] }
-                    : card
+                  card.id === cardId ? { ...card, ...patch } : card
                 ),
               }
             : lane
         )
       );
+    const onReminderDone = (e) =>
+      e.detail?.cardId &&
+      patchCard(e.detail.cardId, { reminderTime: null, reminderRepeat: null, reminderDays: [] });
+    const onFocusCycle = (e) =>
+      e.detail?.cardId && patchCard(e.detail.cardId, { focusCycles: e.detail.count });
+    const onTaskDone = (e) => e.detail?.cardId && patchCard(e.detail.cardId, { done: true });
+    window.addEventListener("fluxtime:reminder-done", onReminderDone);
+    window.addEventListener("fluxtime:focus-cycle", onFocusCycle);
+    window.addEventListener("fluxtime:task-done", onTaskDone);
+    return () => {
+      window.removeEventListener("fluxtime:reminder-done", onReminderDone);
+      window.removeEventListener("fluxtime:focus-cycle", onFocusCycle);
+      window.removeEventListener("fluxtime:task-done", onTaskDone);
     };
-    window.addEventListener("fluxtime:reminder-done", onDone);
-    return () => window.removeEventListener("fluxtime:reminder-done", onDone);
   }, []);
 
   const laneDrag = useRef(null);
@@ -721,7 +742,7 @@ function TarefasSection({ userId }) {
         supabase
           .from("tasks")
           .select(
-            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at, reminder_time, reminder_repeat, reminder_days"
+            "id, lane_id, title, description, done, period, status, sort_order, cover_type, cover_color, cover_attachment_id, cover_focus_x, cover_focus_y, start_date, due_at, reminder_time, reminder_repeat, reminder_days, metadata"
           )
           .eq("user_id", userId)
           .neq("status", "archived")
@@ -830,6 +851,7 @@ function TarefasSection({ userId }) {
           reminderTime: task.reminder_time ? String(task.reminder_time).slice(0, 5) : null,
           reminderRepeat: task.reminder_time ? task.reminder_repeat || "once" : null,
           reminderDays: task.reminder_days || [],
+          focusCycles: Number(task.metadata?.focus_cycles) || 0,
           period: task.period || null,
           order: task.sort_order ?? list.length,
         });
@@ -1977,6 +1999,7 @@ function TarefasSection({ userId }) {
           lifted={liftedLaneId === lane.id}
           onLaneGripDown={(e) => handleLaneGripDown(e, lane.id)}
           onCardPointerDown={(e, cardId) => handleCardPointerDown(e, lane.id, cardId)}
+          onFocusCard={onFocusTask}
         />
       )) : null}
       {boardReady && canCreateDefaultLane ? (
@@ -2282,10 +2305,98 @@ function TimerApp({ session, onLogout, entered }) {
     [musicTrackId]
   );
 
+  // ===== Tarefa vinculada ao ciclo (Modo Semana) =====
+  // Persistida por usuario: recarregar a pagina mantem o vinculo.
+  const focusTaskKey = `fluxtime.focus-task.${userId || "local"}`;
+  const [focusTask, setFocusTask] = useState(null);
+  const focusTaskRef = useRef(null);
+  focusTaskRef.current = focusTask;
+  const sessionCyclesRef = useRef(0);
+  const [finishPrompt, setFinishPrompt] = useState(null);
+
+  useEffect(() => {
+    try {
+      setFocusTask(JSON.parse(localStorage.getItem(focusTaskKey) || "null"));
+    } catch {
+      setFocusTask(null);
+    }
+  }, [focusTaskKey]);
+
+  const linkFocusTask = useCallback(
+    (task) => {
+      setFocusTask(task);
+      sessionCyclesRef.current = 0;
+      try {
+        if (task) localStorage.setItem(focusTaskKey, JSON.stringify(task));
+        else localStorage.removeItem(focusTaskKey);
+      } catch {
+        /* ignore */
+      }
+    },
+    [focusTaskKey]
+  );
+
+  // +1 ciclo de foco no cartao (tasks.metadata.focus_cycles). O board, se
+  // estiver aberto, recebe o novo total por evento.
+  const bumpFocusCycles = useCallback(
+    async (taskId) => {
+      if (!supabase || !userId) return;
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("metadata")
+        .eq("id", taskId)
+        .maybeSingle();
+      if (error || !data) return;
+      const meta = data.metadata || {};
+      const count = (Number(meta.focus_cycles) || 0) + 1;
+      window.dispatchEvent(
+        new CustomEvent("fluxtime:focus-cycle", { detail: { cardId: taskId, count } })
+      );
+      const { error: saveError } = await supabase
+        .from("tasks")
+        .update({ metadata: { ...meta, focus_cycles: count } })
+        .eq("id", taskId);
+      if (saveError) console.warn("[focus] erro ao somar ciclo:", saveError);
+    },
+    [userId]
+  );
+
+  const handlePhaseEnd = useCallback(
+    (mode, transition) => {
+      playPhaseEnd(mode, transition);
+      if (mode !== "focus" || !focusTaskRef.current) return;
+      sessionCyclesRef.current += 1;
+      bumpFocusCycles(focusTaskRef.current.id);
+    },
+    [bumpFocusCycles]
+  );
+
+  const completeFocusTask = () => {
+    const task = finishPrompt?.task;
+    setFinishPrompt(null);
+    if (!task) return;
+    linkFocusTask(null);
+    window.dispatchEvent(new CustomEvent("fluxtime:task-done", { detail: { cardId: task.id } }));
+    if (supabase && userId) {
+      supabase
+        .from("tasks")
+        .update({ done: true, status: "done" })
+        .eq("id", task.id)
+        .then(({ error }) => {
+          if (error) console.warn("[focus] erro ao concluir tarefa:", error);
+        });
+    }
+  };
+
   // Encerrar a sessao tambem desliga a intencao de tocar musica. So parar o
   // audio nao basta: ao voltar para o ciclo 1, o efeito de virada o iniciaria
   // de novo porque `musicOn` ainda estaria ligado.
   const handleSessionEnd = useCallback(() => {
+    // Sessao com tarefa vinculada terminou: oferece concluir o cartao.
+    if (focusTaskRef.current) {
+      setFinishPrompt({ task: focusTaskRef.current, cycles: sessionCyclesRef.current });
+    }
+    sessionCyclesRef.current = 0;
     stopMusic();
     setMusicOn(false);
     try {
@@ -2297,7 +2408,7 @@ function TimerApp({ session, onLogout, entered }) {
 
   const timer = useTimer({
     plan,
-    onPhaseEnd: playPhaseEnd,
+    onPhaseEnd: handlePhaseEnd,
     onSessionEnd: handleSessionEnd,
   });
 
@@ -2626,6 +2737,10 @@ function TimerApp({ session, onLogout, entered }) {
               onToggleMusicOn={toggleMusicOn}
               musicVolume={musicVolume}
               onMusicVolume={changeMusicVolume}
+              focusTask={focusTask}
+              onLinkTask={linkFocusTask}
+              onUnlinkTask={() => linkFocusTask(null)}
+              userId={userId}
             />
           ) : null
         ) : section === "cronometro" ? (
@@ -2637,7 +2752,13 @@ function TimerApp({ session, onLogout, entered }) {
             clockRef={currentTimeClockRef}
           />
         ) : (
-          <TarefasSection userId={userId} />
+          <TarefasSection
+            userId={userId}
+            onFocusTask={(task) => {
+              linkFocusTask(task);
+              setSection("foco");
+            }}
+          />
         )}
       </div>
 
@@ -2678,6 +2799,14 @@ function TimerApp({ session, onLogout, entered }) {
     {notifGuideVisible && (
       <NotifGuide onDismiss={dismissNotifGuide} />
     )}
+    {finishPrompt ? (
+      <FocusFinishPrompt
+        task={finishPrompt.task}
+        cycles={finishPrompt.cycles}
+        onComplete={completeFocusTask}
+        onDismiss={() => setFinishPrompt(null)}
+      />
+    ) : null}
     </>
   );
 }
