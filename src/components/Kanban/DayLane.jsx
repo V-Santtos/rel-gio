@@ -241,6 +241,8 @@ export default function DayLane({
   lifted = false,
   onLaneGripDown,
   onCardPointerDown,
+  onWeekItemPointerDown,
+  showDropBands = false,
   onFocusCard,
   canDeleteLane = false,
 }) {
@@ -322,7 +324,7 @@ export default function DayLane({
     if (controlledMode) setMode(controlledMode);
   }, [controlledMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!initialAlarms) return;
     setAlarms(
       initialAlarms.map((a) => ({
@@ -764,11 +766,13 @@ export default function DayLane({
         role="button"
         tabIndex={0}
         data-card-id={card.id}
-        draggable={weekMode && !IS_COARSE_POINTER}
+        draggable={false}
         onPointerDown={
-          !weekMode && !IS_COARSE_POINTER
-            ? (e) => onCardPointerDown?.(e, card.id)
-            : undefined
+          IS_COARSE_POINTER
+            ? undefined
+            : weekMode
+            ? (e) => onWeekItemPointerDown?.(e, "card", card.id)
+            : (e) => onCardPointerDown?.(e, card.id)
         }
         onDragStart={(e) => onItemDragStart(e, "card", card.id)}
         onDragEnter={(e) => onItemDragEnter(e, "card", card.id)}
@@ -836,10 +840,11 @@ export default function DayLane({
       className={`lane__alarm-item${IS_COARSE_POINTER ? "" : " is-draggable"}${
         alarm.enabled ? "" : " is-off"
       }${dragId === `alarm:${alarm.id}` ? " is-dragging" : ""}`}
-      draggable={!IS_COARSE_POINTER}
-      onDragStart={(e) => onItemDragStart(e, "alarm", alarm.id)}
-      onDragEnter={(e) => onItemDragEnter(e, "alarm", alarm.id)}
-      onDragEnd={onItemDragEnd}
+      data-alarm-id={alarm.id}
+      draggable={false}
+      onPointerDown={
+        IS_COARSE_POINTER ? undefined : (e) => onWeekItemPointerDown?.(e, "alarm", alarm.id)
+      }
       title="Editar alarme"
     >
       <button
@@ -886,18 +891,22 @@ export default function DayLane({
           .filter((a) => periodForTime(a.time) === p.key)
           .map((a) => ({ type: "alarm", id: a.id, order: a.order ?? 0, alarm: a })),
       ].sort((x, y) => x.order - y.order),
-    })).filter((g) => g.items.length);
+    })).filter((g) => g.items.length || showDropBands);
 
     return (
       <>
         {pending.length ? (
-          <div className="lane__period is-pending">
+          <div className="lane__period is-pending" data-period="pending">
             <div className="lane__period-head">A definir</div>
             {pending.map(renderCard)}
           </div>
         ) : null}
         {groups.map((g) => (
-          <div className="lane__period" key={g.key}>
+          <div
+            className={`lane__period${g.items.length ? "" : " is-drop-ghost"}`}
+            key={g.key}
+            data-period={g.key}
+          >
             <div className="lane__period-head">
               {g.Icon ? <g.Icon size={13} strokeWidth={2.2} /> : null}
               <span>{g.label}</span>

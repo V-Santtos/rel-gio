@@ -2293,8 +2293,38 @@ html.is-card-dragging * {
    controla o transform: a transicao CSS brigaria com ele e faria o card
    "quicar" ao soltar. */
 html.is-card-dragging .kcard,
-.kcard.kcard--ghost {
+html.is-card-dragging .lane__alarm-item,
+.kcard.kcard--ghost,
+.drag-ghost {
   transition: none;
+}
+/* Fantasma generico (alarme do Modo Semana): mesmo "levantado" do card. */
+.drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  margin: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.lane__alarm-item.drag-ghost {
+  border-radius: var(--radius-control);
+  background: var(--kcard-bg);
+  box-shadow: var(--modal-shadow);
+}
+/* Modo Semana: faixas vazias que aparecem como alvo durante o arraste. */
+.lane__period.is-drop-ghost {
+  min-height: 64px;
+  border: 1px dashed color-mix(in srgb, var(--fg) 16%, transparent);
+  border-radius: var(--radius-control);
+  padding: 6px 8px 8px;
+}
+.lane__period.is-drop-ghost .lane__period-head {
+  opacity: 0.7;
+}
+.lane__period.is-drop-ghost.is-drop-target {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 .kcard.has-label-bars {
   padding-right: 30px;

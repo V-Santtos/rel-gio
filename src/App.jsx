@@ -63,6 +63,7 @@ import {
   minuteKey,
   showAlarmNotification,
   loadCardReminders,
+  periodForTime,
   saveCardReminders,
   reminderDueToday,
   weekDayKey,
@@ -671,6 +672,16 @@ function TarefasSection({ userId, onFocusTask }) {
 
   const laneDrag = useRef(null);
   const cardDrag = useRef(null);
+  // Arraste do Modo Semana: faixas vazias (Manha/Tarde/Noite) aparecem em todas
+  // as colunas enquanto um CARD e arrastado, para poder soltar num periodo novo.
+  const [weekDropBands, setWeekDropBands] = useState(false);
+  const [boardNotice, setBoardNotice] = useState("");
+  const noticeTimer = useRef(null);
+  const showBoardNotice = (message) => {
+    clearTimeout(noticeTimer.current);
+    setBoardNotice(message);
+    noticeTimer.current = setTimeout(() => setBoardNotice(""), 3800);
+  };
   const [liftedLaneId, setLiftedLaneId] = useState(null);
   const lanesRef = useRef(lanes);
   lanesRef.current = lanes;
@@ -1792,6 +1803,378 @@ function TarefasSection({ userId, onFocusTask }) {
     window.addEventListener("keydown", onKey);
   };
 
+  // ===== Modo Semana: mover card (dia/faixa/posicao) ou alarme (so na faixa) =====
+  // Itens de uma faixa (cards + alarmes do periodo) na ordem manual `order`.
+  const bandItemsOf = (lane, period, skip) =>
+    [
+      ...lane.cards
+        .filter((c) => (c.period ?? null) === period && !(skip?.type === "card" && skip.id === c.id))
+        .map((c) => ({ type: "card", id: c.id, order: c.order ?? 0 })),
+      ...(lane.alarms || [])
+        .filter((a) => periodForTime(a.time) === period && !(skip?.type === "alarm" && skip.id === a.id))
+        .map((a) => ({ type: "alarm", id: a.id, order: a.order ?? 0 })),
+    ].sort((x, y) => x.order - y.order);
+
+  // Insere o item na faixa de destino e renumera a faixa inteira. Regras do
+  // lembrete do card: mesma faixa em outro dia -> segue (dias fixos trocam o dia
+  // antigo pelo novo); faixa diferente -> sai, com aviso.
+  const placeWeekItem = ({ type, id, fromLaneId, toLaneId, toPeriod, index }) => {
+    const current = lanesRef.current;
+    const fromLane = current.find((l) => l.id === fromLaneId);
+    const toLane = current.find((l) => l.id === toLaneId);
+    if (!fromLane || !toLane) return;
+    const moving =
+      type === "card"
+        ? fromLane.cards.find((c) => c.id === id)
+        : (fromLane.alarms || []).find((a) => a.id === id);
+    if (!moving) return;
+
+    const band = bandItemsOf(toLane, toPeriod, { type, id });
+    band.splice(Math.min(index, band.length), 0, { type, id });
+    const orderOf = new Map(band.map((it, i) => [`${it.type}:${it.id}`, i]));
+
+    let movedCard = null;
+    if (type === "card") {
+      movedCard = { ...moving, period: toPeriod, order: orderOf.get(`card:${id}`) };
+      const periodChanged = (moving.period ?? null) !== toPeriod;
+      if (moving.reminderTime && periodChanged) {
+        movedCard = { ...movedCard, reminderTime: null, reminderRepeat: null, reminderDays: [] };
+        showBoardNotice("Lembrete removido: a tarefa mudou de período.");
+      } else if (
+        moving.reminderTime &&
+        fromLaneId !== toLaneId &&
+        moving.reminderRepeat === "days"
+      ) {
+        const days = (moving.reminderDays || []).map((d) =>
+          d === fromLane.dayKey ? toLane.dayKey : d
+        );
+        movedCard = { ...movedCard, reminderDays: [...new Set(days)] };
+      }
+    }
+
+    const changedCards = [];
+    const changedAlarms = [];
+    const next = current.map((lane) => {
+      if (lane.id !== fromLaneId && lane.id !== toLaneId) return lane;
+      let cards = lane.cards;
+      if (type === "card" && lane.id === fromLaneId) cards = cards.filter((c) => c.id !== id);
+      if (lane.id === toLaneId) {
+        cards = cards.map((c) => {
+          const o = orderOf.get(`card:${c.id}`);
+          if (o == null || o === c.order) return c;
+          const nc = { ...c, order: o };
+          changedCards.push([lane.id, nc]);
+          return nc;
+        });
+        if (movedCard) {
+          cards = [...cards, movedCard];
+          changedCards.push([lane.id, movedCard]);
+        }
+      }
+      let alarms = lane.alarms || [];
+      if (lane.id === toLaneId) {
+        alarms = alarms.map((a) => {
+          const o = orderOf.get(`alarm:${a.id}`);
+          if (o == null || o === a.order) return a;
+          const na = { ...a, order: o };
+          changedAlarms.push([lane.id, na]);
+          return na;
+        });
+      }
+      return { ...lane, cards, alarms };
+    });
+    setLanes(next);
+    changedCards.forEach(([laneId, c]) => syncCard(laneId, c));
+    changedAlarms.forEach(([laneId, a]) => persistAlarm(laneId, a));
+  };
+
+  // Arraste no Modo Semana (ponteiro + GSAP), mesma mecanica do Padrao:
+  //  - CARD: reordena na faixa, troca de faixa (muda o periodo) e de dia; faixas
+  //    vazias aparecem como alvo durante o arraste. "A definir" so e origem.
+  //  - ALARME: so reordena dentro da propria faixa (a faixa vem do horario).
+  // Ao soltar, a mudanca e aplicada de uma vez e o GSAP Flip desliza o resto;
+  // o fantasma voa ate o lugar final do item.
+  const handleWeekPointerDown = (e, laneId, type, itemId) => {
+    if (e.button !== 0 || e.pointerType === "touch" || cardDrag.current || laneDrag.current) {
+      return;
+    }
+    const board = boardRef.current;
+    const el = e.currentTarget;
+    const srcBand = el.parentElement;
+    if (!board || !srcBand?.dataset.period) return;
+    const GAP = 8;
+    const ITEM_SEL = ":scope > .kcard[data-card-id], :scope > .lane__alarm-item[data-alarm-id]";
+    const drag = {
+      px: e.clientX,
+      py: e.clientY,
+      startX: e.clientX,
+      startY: e.clientY,
+      started: false,
+      target: null,
+      raf: 0,
+      shiftY: new WeakMap(),
+      touched: new Set(),
+      after: new Set(),
+    };
+    cardDrag.current = drag;
+
+    const bandsAll = () => [...board.querySelectorAll(".lane:not(.is-collapsed) .lane__period")];
+    const allowed = (band) =>
+      type === "alarm" ? band === srcBand : band.dataset.period !== "pending";
+    const itemsIn = (band) => [...band.querySelectorAll(ITEM_SEL)].filter((n) => n !== el);
+    const layoutTop = (n) =>
+      n.getBoundingClientRect().top - gsap.getProperty(n, "y") - (drag.after.has(n) ? drag.H : 0);
+
+    const findTarget = () => {
+      const cx = drag.px - drag.grabX + drag.w / 2;
+      const cy = drag.py - drag.grabY + drag.h / 2;
+      const bands = bandsAll().filter(allowed);
+      if (!bands.length) return null;
+      // Coluna mais proxima no eixo X; dentro dela, a faixa mais proxima no Y.
+      let lane = null;
+      let bestX = Infinity;
+      bands.forEach((b) => {
+        const r = b.closest(".lane").getBoundingClientRect();
+        const d = cx < r.left ? r.left - cx : cx > r.right ? cx - r.right : 0;
+        if (d < bestX) {
+          bestX = d;
+          lane = b.closest(".lane");
+        }
+      });
+      const inLane = bands.filter((b) => b.closest(".lane") === lane);
+      const distY = (b) => {
+        const r = b.getBoundingClientRect();
+        return cy < r.top ? r.top - cy : cy > r.bottom ? cy - r.bottom : 0;
+      };
+      let band = inLane[0];
+      inLane.forEach((b) => {
+        if (distY(b) < distY(band)) band = b;
+      });
+      // Histerese: a faixa atual segura o alvo perto da borda (sem tremer).
+      const cur = drag.target?.band;
+      if (cur && inLane.includes(cur) && distY(cur) <= 14) band = cur;
+      const index = itemsIn(band).filter((n) => layoutTop(n) + n.offsetHeight / 2 < cy).length;
+      return { band, index, laneId: lane.dataset.laneId, period: band.dataset.period };
+    };
+
+    const setY = (n, y) => {
+      if ((drag.shiftY.get(n) ?? 0) === y) return;
+      drag.shiftY.set(n, y);
+      drag.touched.add(n);
+      gsap.to(n, { y, duration: 0.22, ease: "power3.out", overwrite: true, force3D: true });
+    };
+    const applyShifts = () => {
+      const t = drag.target;
+      bandsAll().forEach((band) => {
+        itemsIn(band).forEach((n, j) => {
+          let y = drag.after.has(n) ? -drag.H : 0;
+          if (t && band === t.band && j >= t.index) y += drag.H;
+          setY(n, y);
+        });
+        const foreign = t && band === t.band && band !== srcBand;
+        const left = t && t.band !== srcBand && band === srcBand;
+        band.classList.toggle("is-drop-target", Boolean(foreign || (t && band === t.band)));
+        drag.touched.add(band);
+        gsap.to(band, {
+          paddingBottom: (drag.padOf.get(band) ?? 0) + (foreign ? drag.H : 0),
+          marginBottom: left ? -drag.H : 0,
+          duration: 0.22,
+          ease: "power3.out",
+          overwrite: true,
+        });
+      });
+    };
+
+    const update = () => {
+      gsap.set(drag.ghost, {
+        x: drag.px - drag.grabX - drag.originLeft,
+        y: drag.py - drag.grabY - drag.originTop,
+      });
+      const t = findTarget();
+      if (!t) return;
+      if (drag.target && t.band === drag.target.band && t.index === drag.target.index) return;
+      drag.target = t;
+      applyShifts();
+    };
+
+    const tick = () => {
+      const r = board.getBoundingClientRect();
+      const edge = 70;
+      let dx = 0;
+      if (drag.px < r.left + edge) dx = -(r.left + edge - drag.px);
+      else if (drag.px > r.right - edge) dx = drag.px - (r.right - edge);
+      if (dx) {
+        board.scrollLeft += Math.max(-14, Math.min(14, dx / 5));
+        update();
+      }
+      drag.raf = requestAnimationFrame(tick);
+    };
+
+    const begin = () => {
+      drag.started = true;
+      const pre = el.getBoundingClientRect();
+      drag.grabX = drag.startX - pre.left;
+      drag.grabY = drag.startY - pre.top;
+      // Card: mostra as faixas vazias ANTES de medir (o layout muda).
+      if (type === "card") flushSync(() => setWeekDropBands(true));
+      const rect = el.getBoundingClientRect();
+      drag.w = rect.width;
+      drag.h = rect.height;
+      drag.H = rect.height + GAP;
+      drag.originLeft = rect.left;
+      drag.originTop = rect.top;
+      drag.padOf = new Map(
+        bandsAll().map((b) => [b, parseFloat(getComputedStyle(b).paddingBottom) || 0])
+      );
+      const srcItems = [...srcBand.querySelectorAll(ITEM_SEL)];
+      drag.origIndex = srcItems.indexOf(el);
+      drag.after = new Set(srcItems.slice(drag.origIndex + 1));
+
+      const ghost = el.cloneNode(true);
+      ghost.classList.add("drag-ghost");
+      if (type === "card") ghost.classList.add("kcard--ghost");
+      ghost.removeAttribute("data-card-id");
+      ghost.removeAttribute("data-alarm-id");
+      ghost.removeAttribute("tabindex");
+      ghost.setAttribute("aria-hidden", "true");
+      Object.assign(ghost.style, {
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+      });
+      document.body.appendChild(ghost);
+      drag.ghost = ghost;
+      el.style.visibility = "hidden";
+      window.getSelection()?.removeAllRanges();
+      document.documentElement.classList.add("is-card-dragging");
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce) gsap.to(ghost, { rotation: 1.5, scale: 1.02, duration: 0.18, ease: "power2.out" });
+      drag.target = {
+        band: srcBand,
+        index: drag.origIndex,
+        laneId,
+        period: srcBand.dataset.period,
+      };
+      drag.raf = requestAnimationFrame(tick);
+      update();
+    };
+
+    const onMove = (ev) => {
+      drag.px = ev.clientX;
+      drag.py = ev.clientY;
+      if (!drag.started) {
+        if (Math.hypot(ev.clientX - drag.startX, ev.clientY - drag.startY) < 5) return;
+        begin();
+      }
+      update();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey);
+      cancelAnimationFrame(drag.raf);
+    };
+
+    const finish = (cancelled) => {
+      cleanup();
+      if (!drag.started) {
+        cardDrag.current = null;
+        return;
+      }
+      // O pointerup de um arraste ainda gera um click: nao abrir card/alarme.
+      const block = (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+      };
+      window.addEventListener("click", block, true);
+      setTimeout(() => window.removeEventListener("click", block, true), 0);
+
+      const origin = { band: srcBand, index: drag.origIndex, laneId, period: srcBand.dataset.period };
+      const t = cancelled || !drag.target ? origin : drag.target;
+      const same = t.band === srcBand && t.index === drag.origIndex;
+
+      // Aplica tudo de uma vez: limpa os deslocamentos, grava a mudanca, tira
+      // as faixas vazias e desliza o resto do quadro (Flip) ate o layout novo.
+      const flipTargets = [
+        ...board.querySelectorAll(
+          ".lane:not(.is-collapsed) .lane__period > *, .lane:not(.is-collapsed) .lane__foot"
+        ),
+      ].filter((n) => n !== el);
+      const state = Flip.getState(flipTargets);
+      drag.touched.forEach((n) => {
+        gsap.killTweensOf(n);
+        gsap.set(n, { clearProps: "transform,paddingBottom,marginBottom" });
+        n.classList?.remove("is-drop-target");
+      });
+      el.style.visibility = "";
+      flushSync(() => {
+        if (!same) {
+          placeWeekItem({
+            type,
+            id: itemId,
+            fromLaneId: laneId,
+            toLaneId: t.laneId,
+            toPeriod: t.period === "pending" ? null : t.period,
+            index: t.index,
+          });
+        }
+        setWeekDropBands(false);
+      });
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // A transicao CSS do .kcard (hover) so volta DEPOIS do Flip, senao ela
+      // brigaria com o transform do GSAP (o "quique").
+      Flip.from(state, {
+        duration: reduce ? 0 : 0.3,
+        ease: "power3.out",
+        force3D: true,
+        onComplete: () => {
+          void board.offsetHeight;
+          document.documentElement.classList.remove("is-card-dragging");
+        },
+      });
+
+      // Fantasma voa ate a posicao final do item (elemento novo se mudou de dia).
+      const attr = type === "card" ? "data-card-id" : "data-alarm-id";
+      const finalEl = board.querySelector(`[${attr}="${itemId}"]`);
+      const endRect = finalEl?.getBoundingClientRect();
+      if (finalEl) finalEl.style.visibility = "hidden";
+      const done = () => {
+        if (finalEl) finalEl.style.visibility = "";
+        drag.ghost.remove();
+        cardDrag.current = null;
+        // Rede de seguranca caso o Flip nao tenha alvos (onComplete imediato).
+        setTimeout(() => document.documentElement.classList.remove("is-card-dragging"), 400);
+      };
+      if (!endRect || reduce) {
+        done();
+        return;
+      }
+      gsap.to(drag.ghost, {
+        x: endRect.left - drag.originLeft,
+        y: endRect.top - drag.originTop,
+        rotation: 0,
+        scale: 1,
+        duration: 0.28,
+        ease: "power3.out",
+        overwrite: true,
+        onComplete: done,
+      });
+    };
+    const onUp = () => finish(false);
+    const onCancel = () => finish(true);
+    const onKey = (ev) => {
+      if (ev.key === "Escape" && drag.started) finish(true);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKey);
+  };
+
   const orderedLanes = [...lanes].sort(bySort);
   const weekLanes = orderedLanes.filter((lane) => isWeekDayKey(lane.dayKey)).slice(0, 7);
   const defaultLanes = orderedLanes.filter((lane) => !isWeekDayKey(lane.dayKey));
@@ -1948,6 +2331,11 @@ function TarefasSection({ userId, onFocusTask }) {
           </button>
         </div>
       </div>
+      {boardNotice ? (
+        <div className="sync-status sync-status--info" role="status">
+          <span>{boardNotice}</span>
+        </div>
+      ) : null}
       <div className="tarefas__lanes" ref={boardRef}>
       {syncError ? (
         <div className="sync-status sync-status--error" role="status">
@@ -1993,6 +2381,8 @@ function TarefasSection({ userId, onFocusTask }) {
           lifted={liftedLaneId === lane.id}
           onLaneGripDown={(e) => handleLaneGripDown(e, lane.id)}
           onCardPointerDown={(e, cardId) => handleCardPointerDown(e, lane.id, cardId)}
+          onWeekItemPointerDown={(e, type, id) => handleWeekPointerDown(e, lane.id, type, id)}
+          showDropBands={weekDropBands && isWeekDayKey(lane.dayKey)}
           onFocusCard={onFocusTask}
         />
       )) : null}
