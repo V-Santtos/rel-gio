@@ -27,6 +27,43 @@ import {
 const editorPlaceholder = "Adicione uma descrição mais detalhada…";
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
 
+// Quebra de linha interna (Shift+Enter ou "\n" de texto antigo/colado) deixa
+// varias linhas visuais num bloco so — e Titulo/Texto normal valem pro bloco
+// inteiro. Antes de aplicar o estilo, separa em bloco proprio so as linhas da
+// selecao, removendo as quebras vizinhas (inclusive linhas em branco).
+function isolateSelectedLines(editor) {
+  const { state } = editor;
+  const { $from, $to } = state.selection;
+  if (!$from.sameParent($to) || !$from.parent.isTextblock) return;
+  const start = $from.start();
+  const breaks = [];
+  $from.parent.forEach((child, offset) => {
+    if (child.type.name === "hardBreak") {
+      breaks.push({ from: start + offset, to: start + offset + child.nodeSize });
+    } else if (child.isText) {
+      for (let i = child.text.indexOf("\n"); i !== -1; i = child.text.indexOf("\n", i + 1)) {
+        breaks.push({ from: start + offset + i, to: start + offset + i + 1 });
+      }
+    }
+  });
+  if (!breaks.length) return;
+  // Quebras seguidas viram um trecho so (linha em branco nao sobra no bloco).
+  const runs = [];
+  breaks.forEach((b) => {
+    const last = runs[runs.length - 1];
+    if (last && last.to === b.from) last.to = b.to;
+    else runs.push({ ...b });
+  });
+  const before = runs.filter((r) => r.to <= $from.pos).pop();
+  const after = runs.find((r) => r.from >= $to.pos);
+  if (!before && !after) return;
+  const tr = state.tr;
+  // De tras pra frente: as posicoes de "before" seguem validas.
+  if (after) tr.delete(after.from, after.to).split(after.from);
+  if (before) tr.delete(before.from, before.to).split(before.from);
+  editor.view.dispatch(tr);
+}
+
 function ToolbarButton({ active, title, children, onClick, buttonRef, expanded }) {
   return (
     <button
@@ -475,6 +512,11 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
     run(command);
     setOpen(false);
   };
+  const applyBlockStyle = (command) => () => {
+    if (editor) isolateSelectedLines(editor);
+    run(command);
+    setHeadingOpen(false);
+  };
   const chainAtSaved = () => {
     const chain = editor.chain().focus();
     return savedRange.current ? chain.setTextSelection(savedRange.current) : chain;
@@ -649,7 +691,7 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
                   label="Texto normal"
                   shortcut="Mod-Alt-0"
                   checked={!active.heading}
-                  onSelect={applyAndClose(setHeadingOpen, (chain) => chain.setParagraph())}
+                  onSelect={applyBlockStyle((chain) => chain.setParagraph())}
                 />
                 {HEADING_LEVELS.map((level) => (
                   <MenuItem
@@ -658,9 +700,7 @@ export default function MarkdownEditor({ value, onChange, onBlur, canUpload = fa
                     labelClassName={`mlist__label--h${level}`}
                     shortcut={`Mod-Alt-${level}`}
                     checked={active.level === level}
-                    onSelect={applyAndClose(setHeadingOpen, (chain) =>
-                      chain.setHeading({ level })
-                    )}
+                    onSelect={applyBlockStyle((chain) => chain.setHeading({ level }))}
                   />
                 ))}
               </MenuList>
